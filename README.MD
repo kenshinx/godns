@@ -14,3 +14,14 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 
 * Cache records save in memory or redis configurable
 
+
+### Configuration
+
+All the configuration on godns.conf a TOML formating config file.   
+More about Toml :[https://github.com/mojombo/toml](https://github.com/mojombo/toml)
+
+
+
+
+
+
