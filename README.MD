@@ -15,7 +15,13 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 * Cache records save in memory or redis configurable
 
 
-### Configuration
+## Install & Running
+
+
+
+
+
+## Configuration
 
 All the configuration on `godns.conf` a TOML formating config file.   
 More about Toml :[https://github.com/mojombo/toml](https://github.com/mojombo/toml)
@@ -30,6 +36,15 @@ Upstream server can be configuration by change file from somewhere other that "/
 resolv-file = "/etc/resolv.conf"
 ```
 If multi `namerserver` set at resolv.conf, the upsteam server will try in order of up to botton
+
+
+
+#### hosts
+
+
+
+
+#### cache
 
 
 

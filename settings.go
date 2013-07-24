@@ -46,7 +46,7 @@ type LogSettings struct {
 type CacheSettings struct {
 	Backend  string
 	Expire   time.Duration
-	Maxcount uint32
+	Maxcount int
 }
 
 func init() {
