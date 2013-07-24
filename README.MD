@@ -19,8 +19,6 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 
 
 
-
-
 ## Configuration
 
 All the configuration on `godns.conf` a TOML formating config file.   
@@ -45,6 +43,8 @@ If multi `namerserver` set at resolv.conf, the upsteam server will try in order 
 
 
 #### cache
+
+Only the local memory storage backend implemented now.  The redis backend is in todo list
 
 
 

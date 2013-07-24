@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"github.com/hoisie/redis"
 	"github.com/miekg/dns"
 	"time"
 )
@@ -47,10 +48,9 @@ type Cache interface {
 }
 
 type MemoryCache struct {
-	backend    map[string]*dns.Msg
-	serializer *JsonSerializer
-	expire     time.Duration
-	maxcount   int
+	backend  map[string]*dns.Msg
+	expire   time.Duration
+	maxcount int
 }
 
 func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
@@ -60,11 +60,6 @@ func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
 		return nil, KeyNotFound{key}
 	}
 
-	// mesg := new(dns.Msg)
-	// if err := c.serializer.Loads([]byte(data), &mesg); err != nil {
-	// 	fmt.Println(err)
-	// 	return nil, SerializerError{}
-	// }
 	return mesg, nil
 
 }
@@ -73,13 +68,6 @@ func (c *MemoryCache) Set(key string, mesg *dns.Msg) error {
 	if c.Full() && !c.Exists(key) {
 		return CacheIsFull{}
 	}
-	// data, err := c.serializer.Dumps(mesg)
-
-	// if err != nil {
-	// 	return SerializerError{}
-	// }
-
-	// c.backend[key] = string(data)
 	c.backend[key] = mesg
 	return nil
 }
@@ -105,21 +93,28 @@ func (c *MemoryCache) Full() bool {
 	return c.Length() >= c.maxcount
 }
 
-// type RedisCache struct{
-// backend redis.client
-// }
+/*
+TODO: Redis cache backend
+*/
 
-// func (c *RedisCache) Get(key string) {
+type RedisCache struct {
+	backend    *redis.Client
+	serializer JsonSerializer
+	expire     time.Duration
+	maxcount   int
+}
 
-// }
+func (c *RedisCache) Get() {
 
-// func (c *RedisCache) Set() {
+}
 
-// }
+func (c *RedisCache) Set() {
 
-// func (c &RedisCache) Remove(){
+}
 
-// }
+func (c *RedisCache) Remove() {
+
+}
 
 func KeyGen(q Question) string {
 	h := md5.New()
