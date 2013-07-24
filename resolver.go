@@ -44,7 +44,6 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		Debug("%s resolv on %s ttl: %d", qname, nameserver, rtt)
 		return r, nil
 	}
-	Debug("%s dns query failed", qname)
 	return nil, ResolvError{qname, r.Nameservers()}
 
 }

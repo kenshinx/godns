@@ -43,6 +43,14 @@ func (h *GODNSHandler) do(net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	mesg, err := h.resolver.Lookup(net, req)
 
+	if err != nil {
+		Debug("%s", err)
+		dns.HandleFailed(w, req)
+		return
+	}
+
+	w.WriteMsg(mesg)
+
 }
 
 func (h *GODNSHandler) DoTCP(w dns.ResponseWriter, req *dns.Msg) {

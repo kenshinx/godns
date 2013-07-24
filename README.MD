@@ -17,9 +17,19 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 
 ### Configuration
 
-All the configuration on godns.conf a TOML formating config file.   
+All the configuration on `godns.conf` a TOML formating config file.   
 More about Toml :[https://github.com/mojombo/toml](https://github.com/mojombo/toml)
 
+
+#### resolv.conf
+
+Upstream server can be configuration by change file from somewhere other that "/etc/resolv.conf"
+
+```
+[resolv]
+resolv-file = "/etc/resolv.conf"
+```
+If multi `namerserver` set at resolv.conf, the upsteam server will try in order of up to botton
 
 
 
