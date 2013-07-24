@@ -2,8 +2,6 @@ package main
 
 import (
 	"github.com/miekg/dns"
-	// "log"
-	"fmt"
 )
 
 type Question struct {
@@ -44,14 +42,14 @@ func NewHandler() *GODNSHandler {
 	switch cacheConfig.Backend {
 	case "memory":
 		cache = &MemoryCache{
-			backend:    make(map[string]string),
+			backend:    make(map[string]*dns.Msg),
 			serializer: new(JsonSerializer),
 			expire:     cacheConfig.Expire,
 			maxcount:   cacheConfig.Maxcount,
 		}
 	case "redis":
 		cache = &MemoryCache{
-			backend:    make(map[string]string),
+			backend:    make(map[string]*dns.Msg),
 			serializer: new(JsonSerializer),
 			expire:     cacheConfig.Expire,
 			maxcount:   cacheConfig.Maxcount,
@@ -71,7 +69,6 @@ func (h *GODNSHandler) do(net string, w dns.ResponseWriter, req *dns.Msg) {
 	Debug("Question:　%s", Q.String())
 
 	key := KeyGen(Q)
-	fmt.Println(key)
 	// Only query cache when qtype == 'A' , qclass == 'IN'
 	if q.Qtype == dns.TypeA && q.Qclass == dns.ClassINET {
 		mesg, err := h.cache.Get(key)
@@ -79,6 +76,7 @@ func (h *GODNSHandler) do(net string, w dns.ResponseWriter, req *dns.Msg) {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
 		} else {
 			Debug("%s hit cache", Q.String())
+			mesg.Id = req.Id
 			w.WriteMsg(mesg)
 			return
 		}

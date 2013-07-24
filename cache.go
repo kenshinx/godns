@@ -47,24 +47,24 @@ type Cache interface {
 }
 
 type MemoryCache struct {
-	backend    map[string]string
+	backend    map[string]*dns.Msg
 	serializer *JsonSerializer
 	expire     time.Duration
 	maxcount   int
 }
 
 func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
-	fmt.Println(c.backend)
-	data, ok := c.backend[key]
+
+	mesg, ok := c.backend[key]
 	if !ok {
 		return nil, KeyNotFound{key}
 	}
 
-	mesg := new(dns.Msg)
-	if err := c.serializer.Loads([]byte(data), &mesg); err != nil {
-		fmt.Println(err)
-		return nil, SerializerError{}
-	}
+	// mesg := new(dns.Msg)
+	// if err := c.serializer.Loads([]byte(data), &mesg); err != nil {
+	// 	fmt.Println(err)
+	// 	return nil, SerializerError{}
+	// }
 	return mesg, nil
 
 }
@@ -73,13 +73,14 @@ func (c *MemoryCache) Set(key string, mesg *dns.Msg) error {
 	if c.Full() && !c.Exists(key) {
 		return CacheIsFull{}
 	}
-	data, err := c.serializer.Dumps(mesg)
+	// data, err := c.serializer.Dumps(mesg)
 
-	if err != nil {
-		return SerializerError{}
-	}
+	// if err != nil {
+	// 	return SerializerError{}
+	// }
 
-	c.backend[key] = string(data)
+	// c.backend[key] = string(data)
+	c.backend[key] = mesg
 	return nil
 }
 
