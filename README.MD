@@ -15,7 +15,9 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 * Cache records save in memory or redis configurable
 
 
-## Install & Running
+## Install
+
+## Running
 
 
 
@@ -45,6 +47,19 @@ If multi `namerserver` set at resolv.conf, the upsteam server will try in order 
 #### cache
 
 Only the local memory storage backend implemented now.  The redis backend is in todo list
+
+```
+[cache]
+backend = "memory"   
+expire = 600  # default expire time 10 minutes
+maxcount = 100000
+```
+
+
+## TODO
+
+* The redis cache backend
+* Update ttl
 
 
 

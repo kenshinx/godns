@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/miekg/dns"
+	"time"
 )
 
 type Question struct {
@@ -42,16 +43,16 @@ func NewHandler() *GODNSHandler {
 	switch cacheConfig.Backend {
 	case "memory":
 		cache = &MemoryCache{
-			backend:  make(map[string]*dns.Msg),
-			expire:   cacheConfig.Expire,
-			maxcount: cacheConfig.Maxcount,
+			Backend:  make(map[string]Mesg),
+			Expire:   time.Duration(cacheConfig.Expire) * time.Second,
+			Maxcount: cacheConfig.Maxcount,
 		}
 	case "redis":
 		// cache = &MemoryCache{
-		// 	backend:    make(map[string]*dns.Msg),
-		// 	serializer: new(JsonSerializer),
-		// 	expire:     cacheConfig.Expire,
-		// 	maxcount:   cacheConfig.Maxcount,
+		// 	Backend:    make(map[string]*dns.Msg),
+		//  Expire:   time.Duration(cacheConfig.Expire) * time.Second,
+		// 	Serializer: new(JsonSerializer),
+		// 	Maxcount:   cacheConfig.Maxcount,
 		// }
 		panic("Redis cache backend not implement yet")
 	default:

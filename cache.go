@@ -39,69 +39,82 @@ func (e SerializerError) Error() string {
 	return "Serializer error"
 }
 
+type Mesg struct {
+	Msg    *dns.Msg
+	Expire time.Time
+}
+
 type Cache interface {
-	Get(key string) (*dns.Msg, error)
-	Set(key string, mesg *dns.Msg) error
+	Get(key string) (Msg *dns.Msg, err error)
+	Set(key string, Msg *dns.Msg) error
 	Exists(key string) bool
 	Remove(key string)
 	Length() int
 }
 
 type MemoryCache struct {
-	backend  map[string]*dns.Msg
-	expire   time.Duration
-	maxcount int
+	Backend  map[string]Mesg
+	Expire   time.Duration
+	Maxcount int
 }
 
 func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
 
-	mesg, ok := c.backend[key]
+	mesg, ok := c.Backend[key]
 	if !ok {
 		return nil, KeyNotFound{key}
 	}
 
-	return mesg, nil
+	if mesg.Expire.Before(time.Now()) {
+		c.Remove(key)
+		return nil, KeyExpired{key}
+	}
+
+	return mesg.Msg, nil
 
 }
 
-func (c *MemoryCache) Set(key string, mesg *dns.Msg) error {
+func (c *MemoryCache) Set(key string, msg *dns.Msg) error {
 	if c.Full() && !c.Exists(key) {
 		return CacheIsFull{}
 	}
-	c.backend[key] = mesg
+
+	expire := time.Now().Add(c.Expire)
+	mesg := Mesg{msg, expire}
+	c.Backend[key] = mesg
 	return nil
 }
 
 func (c *MemoryCache) Remove(key string) {
-	delete(c.backend, key)
+	delete(c.Backend, key)
 }
 
 func (c *MemoryCache) Exists(key string) bool {
-	_, ok := c.backend[key]
+	_, ok := c.Backend[key]
 	return ok
 }
 
 func (c *MemoryCache) Length() int {
-	return len(c.backend)
+	return len(c.Backend)
 }
 
 func (c *MemoryCache) Full() bool {
-	// if maxcount is zero. the cache will never be full.
-	if c.maxcount == 0 {
+	// if Maxcount is zero. the cache will never be full.
+	if c.Maxcount == 0 {
 		return false
 	}
-	return c.Length() >= c.maxcount
+	return c.Length() >= c.Maxcount
 }
 
 /*
-TODO: Redis cache backend
+TODO: Redis cache Backend
 */
 
 type RedisCache struct {
-	backend    *redis.Client
-	serializer JsonSerializer
-	expire     time.Duration
-	maxcount   int
+	Backend    *redis.Client
+	Serializer JsonSerializer
+	Expire     time.Duration
+	Maxcount   int
 }
 
 func (c *RedisCache) Get() {

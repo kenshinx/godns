@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"os"
-	"time"
 )
 
 var (
@@ -45,7 +44,7 @@ type LogSettings struct {
 
 type CacheSettings struct {
 	Backend  string
-	Expire   time.Duration
+	Expire   int
 	Maxcount int
 }
 
