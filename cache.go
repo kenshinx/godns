@@ -39,7 +39,7 @@ func (e SerializerError) Error() string {
 }
 
 type Cache interface {
-	Get(string) ([]byte, error)
+	Get(string) (*dns.Msg, error)
 	Set(string, *dns.Msg) error
 	Exists(string) bool
 	Remove()
@@ -53,20 +53,19 @@ type MemoryCache struct {
 	maxcount   int
 }
 
-func (c *MemoryCache) Get(key string) ([]byte, error) {
+func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
 	fmt.Println(c.backend)
 	data, ok := c.backend[key]
 	if !ok {
 		return nil, KeyNotFound{key}
 	}
-	return []byte(data), nil
 
-	// mesg := new(dns.Msg)
-	// if err := c.serializer.Loads([]byte(data), &mesg); err != nil {
-	// 	fmt.Println(err)
-	// 	return nil, SerializerError{}
-	// }
-	// return mesg, nil
+	mesg := new(dns.Msg)
+	if err := c.serializer.Loads([]byte(data), &mesg); err != nil {
+		fmt.Println(err)
+		return nil, SerializerError{}
+	}
+	return mesg, nil
 
 }
 
@@ -74,13 +73,13 @@ func (c *MemoryCache) Set(key string, mesg *dns.Msg) error {
 	if c.Full() && !c.Exists(key) {
 		return CacheIsFull{}
 	}
-	// data, err := c.serializer.Dumps(mesg)
+	data, err := c.serializer.Dumps(mesg)
 
-	// if err != nil {
-	// 	return SerializerError{}
-	// }
+	if err != nil {
+		return SerializerError{}
+	}
 
-	c.backend[key] = mesg.String()
+	c.backend[key] = string(data)
 	return nil
 }
 

@@ -79,8 +79,7 @@ func (h *GODNSHandler) do(net string, w dns.ResponseWriter, req *dns.Msg) {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
 		} else {
 			Debug("%s hit cache", Q.String())
-			fmt.Println(string(mesg))
-			w.Write(mesg)
+			w.WriteMsg(mesg)
 			return
 		}
 
