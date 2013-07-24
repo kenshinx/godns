@@ -40,10 +40,10 @@ func (e SerializerError) Error() string {
 }
 
 type Cache interface {
-	Get(string) (*dns.Msg, error)
-	Set(string, *dns.Msg) error
-	Exists(string) bool
-	Remove()
+	Get(key string) (*dns.Msg, error)
+	Set(key string, mesg *dns.Msg) error
+	Exists(key string) bool
+	Remove(key string)
 	Length() int
 }
 
@@ -72,8 +72,8 @@ func (c *MemoryCache) Set(key string, mesg *dns.Msg) error {
 	return nil
 }
 
-func (c *MemoryCache) Remove() {
-
+func (c *MemoryCache) Remove(key string) {
+	delete(c.backend, key)
 }
 
 func (c *MemoryCache) Exists(key string) bool {
