@@ -1,23 +1,41 @@
 GODNS
 ====
 
-A tiny dns cache server written by go.
+A simple and fast dns cache server written by go.
 
 
 Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support some difference features:
 
 
-* Keep hosts configuration in redis instead of local file /etc/hosts  
-  So can be updated from remote server    
+* Keep hosts records in redis instead of the local file /etc/hosts  
 
 * Atuo-Reload when hosts configuration changed. (Yes,dnsmasq need restart)
 
 * Cache records save in memory or redis configurable
 
 
-## Install
+## Install & Running
 
-## Running
+1. Install  
+
+		$ go get github.com/kenshinx/godns
+
+
+2. Build  
+
+		$ cd $GOPATH/src/github.com/kenshinx/godns 
+		$ go build -o godns *.go
+
+
+3. Running  
+
+		$ sudo ./godns -c godns.conf
+
+
+4. Use
+
+		$ sudo vi /etc/resolv.conf
+		nameserver 127.0.0.1
 
 
 
@@ -54,6 +72,33 @@ backend = "memory"
 expire = 600  # default expire time 10 minutes
 maxcount = 100000
 ```
+
+
+## Benchmak
+
+```
+$ go test -bench=.
+
+testing: warning: no tests to run
+PASS
+BenchmarkDig-4	    5000	    435141 ns/op
+ok  	_/Users/kenshin/workspace/godns	2.270s
+```
+
+The result : 2200 queries/per second
+
+The enviroment of test:
+
+MacBook Air 
+
+* CPU:  
+Inter Core i5 1.7G  
+Double cores
+
+* MEM:  
+8G
+
+
 
 
 ## TODO

@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"time"
 )
 
@@ -23,6 +24,8 @@ func main() {
 	}
 
 	server.Run()
+
+	logger.Printf("godns %s start", settings.Version)
 
 	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt)
@@ -56,4 +59,8 @@ func initLogger(log_file string) (logger *log.Logger) {
 	}
 	return logger
 
+}
+
+func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 }
