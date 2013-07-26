@@ -79,16 +79,19 @@ maxcount = 100000
 
 ## Benchmak
 
+
+__Debug close__
+
 ```
 $ go test -bench=.
 
 testing: warning: no tests to run
 PASS
-BenchmarkDig-4	    5000	    435141 ns/op
-ok  	_/Users/kenshin/workspace/godns	2.270s
+BenchmarkDig-4	   10000	    202732 ns/op
+ok  	_/Users/kenshin/workspace/gogo/godns	2.489s
 ```
 
-The result : 2200 queries/per second
+The result : 4032 queries/per second
 
 The enviroment of test:
 
