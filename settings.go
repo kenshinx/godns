@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"os"
+	"strconv"
 )
 
 var (
@@ -39,6 +40,10 @@ type RedisSettings struct {
 	Password string
 }
 
+func (s RedisSettings) Addr() string {
+	return s.Host + ":" + strconv.Itoa(s.Port)
+}
+
 type LogSettings struct {
 	File string
 }
@@ -50,8 +55,10 @@ type CacheSettings struct {
 }
 
 type HostsSettings struct {
+	Enable    bool
 	HostsFile string `toml:"host-file"`
 	RedisKey  string `toml:"redis-key"`
+	TTL       uint32 `toml:"ttl"`
 }
 
 func init() {

@@ -59,7 +59,10 @@ If multi `namerserver` set at resolv.conf, the upsteam server will try in order 
 
 #### hosts
 
+Force resolv domain to assigned ip, support two types hosts configuration: locale file and remote redis
 
+#hosts file#  
+can be 
 
 
 #### cache

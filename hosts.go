@@ -1,24 +1,89 @@
 package main
 
 import (
+	"bufio"
 	"github.com/hoisie/redis"
-	// "github.com/miekg/dns"
-	"fmt"
-	"io/ioutil"
+	"os"
+	"regexp"
+	"strings"
 )
 
-type HostsQueryFaild struct {
-	domain string
+type Hosts struct {
+	FileHosts  map[string]string
+	RedisHosts *RedisHosts
 }
 
-func (e HostsQueryFaild) Error() string {
-	return e.domain + " hosts match failed"
+func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
+	fileHosts := &FileHosts{hs.HostsFile}
+	redis := &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
+	redisHosts := &RedisHosts{redis, hs.RedisKey}
+
+	hosts := Hosts{fileHosts.GetAll(), redisHosts}
+	return hosts
+
 }
 
-func readLocalHostsFile(file string) map[string]string {
+/*
+1. Resolve hosts file only one times
+2. Request redis on every get called, may lead to performance lose serious
+3. Match local /etc/hosts file first, remote redis records second
+*/
+
+func (h *Hosts) Get(domain string) (ip string, ok bool) {
+	if ip, ok = h.FileHosts[domain]; ok {
+		return
+	}
+	if ip, ok = h.RedisHosts.Get(domain); ok {
+		return
+	}
+	return "", false
+}
+
+func (h *Hosts) GetAll() map[string]string {
+
+	m := make(map[string]string)
+	for domain, ip := range h.RedisHosts.GetAll() {
+		m[domain] = ip
+	}
+	for domain, ip := range h.FileHosts {
+		m[domain] = ip
+	}
+	return m
+}
+
+type RedisHosts struct {
+	redis *redis.Client
+	key   string
+}
+
+func (r *RedisHosts) GetAll() map[string]string {
 	var hosts = make(map[string]string)
-	f, _ := os.Open(file)
-	scanner := bufio.NewScanner(f)
+	r.redis.Hgetall(r.key, hosts)
+	return hosts
+}
+
+func (r *RedisHosts) Get(domain string) (ip string, ok bool) {
+	b, err := r.redis.Hget(r.key, domain)
+	return string(b), err == nil
+}
+
+func (r *RedisHosts) Set(domain, ip string) (bool, error) {
+	return r.redis.Hset(r.key, domain, []byte(ip))
+}
+
+type FileHosts struct {
+	file string
+}
+
+func (f *FileHosts) GetAll() map[string]string {
+	var hosts = make(map[string]string)
+
+	buf, err := os.Open(f.file)
+	if err != nil {
+		panic("Can't open " + f.file)
+	}
+
+	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 
 		line := scanner.Text()
@@ -39,7 +104,7 @@ func readLocalHostsFile(file string) map[string]string {
 
 		domain := sli[len(sli)-1]
 		ip := sli[0]
-		if !isDomain(domain) || !isIP(ip) {
+		if !f.isDomain(domain) || !f.isIP(ip) {
 			continue
 		}
 
@@ -48,12 +113,12 @@ func readLocalHostsFile(file string) map[string]string {
 	return hosts
 }
 
-func isDomain(domain string) bool {
+func (f *FileHosts) isDomain(domain string) bool {
 	match, _ := regexp.MatchString("^[a-z]", domain)
 	return match
 }
 
-func isIP(ip string) bool {
+func (f *FileHosts) isIP(ip string) bool {
 	match, _ := regexp.MatchString("^[1-9]", ip)
 	return match
 }
