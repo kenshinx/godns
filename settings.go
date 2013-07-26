@@ -19,6 +19,7 @@ type Settings struct {
 	Redis        RedisSettings     `toml:"redis"`
 	Log          LogSettings       `toml:"log"`
 	Cache        CacheSettings     `toml:"cache"`
+	Hosts        HostsSettings     `toml:"hosts"`
 }
 
 type ResolvSettings struct {
@@ -46,6 +47,11 @@ type CacheSettings struct {
 	Backend  string
 	Expire   int
 	Maxcount int
+}
+
+type HostsSettings struct {
+	HostsFile string `toml:"host-file"`
+	RedisKey  string `toml:"redis-key"`
 }
 
 func init() {

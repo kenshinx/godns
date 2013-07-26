@@ -71,7 +71,7 @@ func (h *GODNSHandler) do(net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	key := KeyGen(Q)
 	// Only query cache when qtype == 'A' , qclass == 'IN'
-	if q.Qtype == dns.TypeA && q.Qclass == dns.ClassINET {
+	if h.isIPQuery(q) {
 		mesg, err := h.cache.Get(key)
 		if err != nil {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
@@ -94,7 +94,7 @@ func (h *GODNSHandler) do(net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	w.WriteMsg(mesg)
 
-	if q.Qtype == dns.TypeA && q.Qclass == dns.ClassINET {
+	if h.isIPQuery(q) {
 		err = h.cache.Set(key, mesg)
 
 		if err != nil {
@@ -112,4 +112,8 @@ func (h *GODNSHandler) DoTCP(w dns.ResponseWriter, req *dns.Msg) {
 
 func (h *GODNSHandler) DoUDP(w dns.ResponseWriter, req *dns.Msg) {
 	h.do("udp", w, req)
+}
+
+func (h *GODNSHandler) isIPQuery(q dns.Question) bool {
+	return q.Qtype == dns.TypeA && q.Qclass == dns.ClassINET
 }
