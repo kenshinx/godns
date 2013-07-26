@@ -57,14 +57,6 @@ If multi `namerserver` set at resolv.conf, the upsteam server will try in order 
 
 
 
-#### hosts
-
-Force resolv domain to assigned ip, support two types hosts configuration: locale file and remote redis
-
-#hosts file#  
-can be 
-
-
 #### cache
 
 Only the local memory storage backend implemented now.  The redis backend is in todo list
@@ -75,6 +67,40 @@ backend = "memory"
 expire = 600  # default expire time 10 minutes
 maxcount = 100000
 ```
+
+
+
+#### hosts
+
+Force resolv domain to assigned ip, support two types hosts configuration:
+
+* locale hosts file
+* remote redis hosts
+
+__hosts file__  
+
+can be assigned at godns.conf,default : `/etc/hosts`
+
+```
+[hosts]
+host-file = "/etc/hosts"
+```
+
+
+__redis hosts__ 
+
+This is a espeical requirment in our system. Must maintain a gloab hosts configuration, 
+and support update the hosts record from other remote server.
+so "redis-hosts" is be supported, and will query the reids when each dns request reached.  
+
+The hosts record is organized with redis hash map. and the key the map is configired.
+
+```
+[hosts]
+redis-key = "godns:hosts"
+```
+
+
 
 
 ## Benchmak
