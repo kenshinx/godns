@@ -118,22 +118,22 @@ $ go test -bench=.
 
 testing: warning: no tests to run
 PASS
-BenchmarkDig-4	   10000	    202732 ns/op
-ok  	_/Users/kenshin/workspace/gogo/godns	2.489s
+BenchmarkDig-8     50000             57945 ns/op
+ok      _/usr/home/keqiang/godns        3.259s
 ```
 
-The result : 4032 queries/per second
+The result : 15342 queries/per second
 
 The enviroment of test:
 
-MacBook Air 
+CentOS release 6.4 
 
 * CPU:  
-Inter Core i5 1.7G  
-Double cores
+Intel Xeon 2.40GHZ 
+4 cores
 
 * MEM:  
-8G
+46G
 
 
 
