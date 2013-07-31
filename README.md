@@ -100,6 +100,11 @@ The hosts record is organized with redis hash map. and the key the map is config
 redis-key = "godns:hosts"
 ```
 
+_Insert hosts records into redis_
+
+```
+redis > hset godns:hosts www.sina.com.cn 1.1.1.1
+```
 
 
 
