@@ -25,7 +25,7 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 
 /*
 1. Resolve hosts file only one times
-2. Request redis on every get called, may lead to performance lose serious
+2. Request redis on every query called, not found performance lose serious yet.
 3. Match local /etc/hosts file first, remote redis records second
 */
 
