@@ -136,6 +136,16 @@ Intel Xeon 2.40GHZ
 46G
 
 
+## Web console
+
+Joke: A web console for godns
+
+[https://github.com/kenshinx/joke](https://github.com/kenshinx/joke) 
+
+screenshot
+
+![joke](https://raw.github.com/kenshinx/joke/master/screenshot/joke.png)
+
 
 
 ## TODO
