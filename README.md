@@ -148,6 +148,24 @@ screenshot
 
 
 
+## Deployment
+
+Deployment in productive supervisord highly recommended.
+
+```
+
+[program:godns]
+command=/usr/local/bin/godns -c /etc/godns.conf
+autostart=true
+autorestart=true
+user=root
+stdout_logfile_maxbytes = 50MB
+stdoiut_logfile_backups = 20
+stdout_logfile = /var/log/godns.log
+
+```
+
+
 ## TODO
 
 * The redis cache backend
