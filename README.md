@@ -93,7 +93,7 @@ This is a espeical requirment in our system. Must maintain a gloab hosts configu
 and support update the hosts record from other remote server.
 so "redis-hosts" is be supported, and will query the reids when each dns request reached.  
 
-The hosts record is organized with redis hash map. and the key the map is configired.
+The hosts record is organized with redis hash map. and the key of the map is configured.
 
 ```
 [hosts]
