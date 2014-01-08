@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/miekg/dns"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type GODNSHandler struct {
 	resolver *Resolver
 	cache    Cache
 	hosts    Hosts
+	mu       *sync.Mutex
 }
 
 func NewHandler() *GODNSHandler {
@@ -48,6 +50,7 @@ func NewHandler() *GODNSHandler {
 			Backend:  make(map[string]Mesg),
 			Expire:   time.Duration(cacheConfig.Expire) * time.Second,
 			Maxcount: cacheConfig.Maxcount,
+			mu:       new(sync.RWMutex),
 		}
 	case "redis":
 		// cache = &MemoryCache{
@@ -64,11 +67,10 @@ func NewHandler() *GODNSHandler {
 
 	hosts := NewHosts(settings.Hosts, settings.Redis)
 
-	return &GODNSHandler{resolver, cache, hosts}
+	return &GODNSHandler{resolver, cache, hosts, new(sync.Mutex)}
 }
 
 func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
-
 	q := req.Question[0]
 	Q := Question{UnFqdn(q.Name), dns.TypeToString[q.Qtype], dns.ClassToString[q.Qclass]}
 
@@ -97,8 +99,10 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
 		} else {
 			Debug("%s hit cache", Q.String())
+			h.mu.Lock()
 			mesg.Id = req.Id
 			w.WriteMsg(mesg)
+			h.mu.Unlock()
 			return
 		}
 

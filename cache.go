@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/hoisie/redis"
 	"github.com/miekg/dns"
+	"sync"
 	"time"
 )
 
@@ -56,11 +57,13 @@ type MemoryCache struct {
 	Backend  map[string]Mesg
 	Expire   time.Duration
 	Maxcount int
+	mu       *sync.RWMutex
 }
 
 func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
-
+	c.mu.RLock()
 	mesg, ok := c.Backend[key]
+	c.mu.RUnlock()
 	if !ok {
 		return nil, KeyNotFound{key}
 	}
@@ -81,20 +84,28 @@ func (c *MemoryCache) Set(key string, msg *dns.Msg) error {
 
 	expire := time.Now().Add(c.Expire)
 	mesg := Mesg{msg, expire}
+	c.mu.Lock()
 	c.Backend[key] = mesg
+	c.mu.Unlock()
 	return nil
 }
 
 func (c *MemoryCache) Remove(key string) {
+	c.mu.RLock()
 	delete(c.Backend, key)
+	c.mu.RUnlock()
 }
 
 func (c *MemoryCache) Exists(key string) bool {
+	c.mu.RLock()
 	_, ok := c.Backend[key]
+	c.mu.RUnlock()
 	return ok
 }
 
 func (c *MemoryCache) Length() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return len(c.Backend)
 }
 
