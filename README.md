@@ -9,7 +9,7 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 
 * Keep hosts records in redis instead of the local file /etc/hosts  
 
-* Atuo-Reload when hosts configuration changed. (Yes,dnsmasq need restart)
+* Atuo-Reload when hosts configuration changed. (Yes,dnsmasq need reload)
 
 * Cache records save in memory or redis configurable
 
