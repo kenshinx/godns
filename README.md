@@ -32,10 +32,10 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 		$ sudo ./godns -c godns.conf
 
 
-4. Use
+## Use godns 
 
 		$ sudo vi /etc/resolv.conf
-		nameserver 127.0.0.1
+		nameserver #the ip of godns running
 
 
 
