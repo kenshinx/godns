@@ -4,17 +4,17 @@ GODNS
 A simple and fast dns cache server written by go.
 
 
-Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support some difference features:
+Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support some difference features:
 
 
 * Keep hosts records in redis instead of the local file /etc/hosts  
 
-* Atuo-Reload when hosts configuration changed. (Yes,dnsmasq need reload)
+* Auto-Reloads when hosts configuration is changed. (Yes, dnsmasq needs to be reloaded)
 
 * Cache records save in memory or redis configurable
 
 
-## Install & Running
+## Installation & Running
 
 1. Install  
 
@@ -41,25 +41,25 @@ Similar as [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 
 ## Configuration
 
-All the configuration on `godns.conf` a TOML formating config file.   
+All the configuration in `godns.conf` is a TOML format config file.   
 More about Toml :[https://github.com/mojombo/toml](https://github.com/mojombo/toml)
 
 
 #### resolv.conf
 
-Upstream server can be configuration by change file from somewhere other that "/etc/resolv.conf"
+Upstream server can be configured by changing file from somewhere other than "/etc/resolv.conf"
 
 ```
 [resolv]
 resolv-file = "/etc/resolv.conf"
 ```
-If multi `namerserver` set at resolv.conf, the upsteam server will try in order of up to botton
+If multiple `namerservers` are set in resolv.conf, the upsteam server will try in a top to bottom order
 
 
 
 #### cache
 
-Only the local memory storage backend implemented now.  The redis backend is in todo list
+Only the local memory storage backend is currently implemented.  The redis backend is in the todo list
 
 ```
 [cache]
@@ -72,7 +72,7 @@ maxcount = 100000
 
 #### hosts
 
-Force resolv domain to assigned ip, support two types hosts configuration:
+Force resolve domain to assigned ip, support two types hosts configuration:
 
 * locale hosts file
 * remote redis hosts
@@ -89,9 +89,9 @@ host-file = "/etc/hosts"
 
 __redis hosts__ 
 
-This is a espeical requirment in our system. Must maintain a gloab hosts configuration, 
+This is a special requirment in our system. Must maintain a global hosts configuration, 
 and support update the hosts record from other remote server.
-so "redis-hosts" is be supported, and will query the reids when each dns request reached.  
+so "redis-hosts" will be supported, and will query the redis db when each dns request is reached.  
 
 The hosts record is organized with redis hash map. and the key of the map is configured.
 
@@ -124,7 +124,7 @@ ok      _/usr/home/keqiang/godns        3.259s
 
 The result : 15342 queries/per second
 
-The enviroment of test:
+The test environment:
 
 CentOS release 6.4 
 
