@@ -136,7 +136,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	w.WriteMsg(mesg)
 
-	if IPQuery > 0 {
+	if IPQuery > 0 && len(mesg.Answer) > 0 {
 		err = h.cache.Set(key, mesg)
 
 		if err != nil {
