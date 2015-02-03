@@ -20,7 +20,7 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 	fileHosts := &FileHosts{hs.HostsFile}
 
 	var rc *redis.Client
-	if rs.Enable {
+	if hs.RedisEnable {
 		rc = &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
 	} else {
 		rc = nil
