@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"net"
 	"os"
 	"regexp"
@@ -17,8 +18,14 @@ type Hosts struct {
 
 func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 	fileHosts := &FileHosts{hs.HostsFile}
-	redis := &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
-	redisHosts := &RedisHosts{redis, hs.RedisKey}
+
+	var rc *redis.Client
+	if rs.Enable {
+		rc = &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
+	} else {
+		rc = nil
+	}
+	redisHosts := &RedisHosts{rc, hs.RedisKey}
 
 	hosts := Hosts{fileHosts.GetAll(), redisHosts}
 	return hosts
@@ -69,17 +76,26 @@ type RedisHosts struct {
 }
 
 func (r *RedisHosts) GetAll() map[string]string {
+	if r.redis == nil {
+		return map[string]string{}
+	}
 	var hosts = make(map[string]string)
 	r.redis.Hgetall(r.key, hosts)
 	return hosts
 }
 
 func (r *RedisHosts) Get(domain string) (ip string, ok bool) {
+	if r.redis == nil {
+		return "", false
+	}
 	b, err := r.redis.Hget(r.key, domain)
 	return string(b), err == nil
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
+	if r.redis == nil {
+		return false, errors.New("Redis not enabled")
+	}
 	return r.redis.Hset(r.key, domain, []byte(ip))
 }
 

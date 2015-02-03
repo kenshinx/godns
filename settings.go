@@ -36,6 +36,7 @@ type DNSServerSettings struct {
 }
 
 type RedisSettings struct {
+	Enable   bool
 	Host     string
 	Port     int
 	DB       int
