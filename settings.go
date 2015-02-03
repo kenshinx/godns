@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"os"
 	"strconv"
+
+	"github.com/BurntSushi/toml"
 )
 
 var (
@@ -24,8 +25,9 @@ type Settings struct {
 }
 
 type ResolvSettings struct {
-	ResolvFile string `toml:"resolv-file"`
-	Timeout    int
+	ResolvFile       string `toml:"resolv-file"`
+	DomainServerFile string `toml:"domain-server-file"`
+	Timeout          int
 }
 
 type DNSServerSettings struct {

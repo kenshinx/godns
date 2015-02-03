@@ -116,7 +116,7 @@ func (f *FileHosts) GetAll() map[string]string {
 
 		domain := sli[len(sli)-1]
 		ip := sli[0]
-		if !f.isDomain(domain) || !f.isIP(ip) {
+		if !isDomain(domain) || !isIP(ip) {
 			continue
 		}
 
@@ -125,14 +125,14 @@ func (f *FileHosts) GetAll() map[string]string {
 	return hosts
 }
 
-func (f *FileHosts) isDomain(domain string) bool {
-	if f.isIP(domain) {
+func isDomain(domain string) bool {
+	if isIP(domain) {
 		return false
 	}
 	match, _ := regexp.MatchString("^[a-zA-Z0-9][a-zA-Z0-9-]", domain)
 	return match
 }
 
-func (f *FileHosts) isIP(ip string) bool {
+func isIP(ip string) bool {
 	return (net.ParseIP(ip) != nil)
 }
