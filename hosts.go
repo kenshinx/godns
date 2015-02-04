@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
-	"github.com/hoisie/redis"
+	"net"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/hoisie/redis"
 )
 
 type Hosts struct {
@@ -29,14 +31,24 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 3. Match local /etc/hosts file first, remote redis records second
 */
 
-func (h *Hosts) Get(domain string) (ip string, ok bool) {
-	if ip, ok = h.FileHosts[domain]; ok {
-		return
+func (h *Hosts) Get(domain string, family int) (ip net.IP, ok bool) {
+	var sip string
+
+	if sip, ok = h.FileHosts[domain]; !ok {
+		if sip, ok = h.RedisHosts.Get(domain); !ok {
+			return nil, false
+		}
 	}
-	if ip, ok = h.RedisHosts.Get(domain); ok {
-		return
+
+	switch family {
+	case _IP4Query:
+		ip = net.ParseIP(sip).To4()
+		return ip, (ip != nil)
+	case _IP6Query:
+		ip = net.ParseIP(sip).To16()
+		return ip, (ip != nil)
 	}
-	return "", false
+	return nil, false
 }
 
 func (h *Hosts) GetAll() map[string]string {
@@ -114,11 +126,13 @@ func (f *FileHosts) GetAll() map[string]string {
 }
 
 func (f *FileHosts) isDomain(domain string) bool {
-	match, _ := regexp.MatchString("^[a-z]", domain)
+	if f.isIP(domain) {
+		return false
+	}
+	match, _ := regexp.MatchString("^[a-zA-Z0-9][a-zA-Z0-9-]", domain)
 	return match
 }
 
 func (f *FileHosts) isIP(ip string) bool {
-	match, _ := regexp.MatchString("^[1-9]", ip)
-	return match
+	return (net.ParseIP(ip) != nil)
 }

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/miekg/dns"
-	"net"
 	"sync"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 type Question struct {
@@ -12,6 +12,12 @@ type Question struct {
 	qtype  string
 	qclass string
 }
+
+const (
+	notIPQuery = 0
+	_IP4Query  = 4
+	_IP6Query  = 6
+)
 
 func (q *Question) String() string {
 	return q.qname + " " + q.qclass + " " + q.qtype
@@ -76,24 +82,47 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	Debug("Question:　%s", Q.String())
 
+	IPQuery := h.isIPQuery(q)
+
 	// Query hosts
-	if settings.Hosts.Enable && h.isIPQuery(q) {
-		if ip, ok := h.hosts.Get(Q.qname); ok {
+	if settings.Hosts.Enable && IPQuery > 0 {
+		if ip, ok := h.hosts.Get(Q.qname, IPQuery); ok {
 			m := new(dns.Msg)
 			m.SetReply(req)
-			rr_header := dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: settings.Hosts.TTL}
-			a := &dns.A{rr_header, net.ParseIP(ip)}
-			m.Answer = append(m.Answer, a)
+
+			switch IPQuery {
+			case _IP4Query:
+				rr_header := dns.RR_Header{
+					Name:   q.Name,
+					Rrtype: dns.TypeA,
+					Class:  dns.ClassINET,
+					Ttl:    settings.Hosts.TTL,
+				}
+				a := &dns.A{rr_header, ip}
+				m.Answer = append(m.Answer, a)
+			case _IP6Query:
+				rr_header := dns.RR_Header{
+					Name:   q.Name,
+					Rrtype: dns.TypeAAAA,
+					Class:  dns.ClassINET,
+					Ttl:    settings.Hosts.TTL,
+				}
+				aaaa := &dns.AAAA{rr_header, ip}
+				m.Answer = append(m.Answer, aaaa)
+			}
+
 			w.WriteMsg(m)
-			Debug("%s found in hosts", Q.qname)
+			Debug("%s found in hosts file", Q.qname)
 			return
+		} else {
+			Debug("%s didn't found in hosts file", Q.qname)
 		}
 
 	}
 
 	// Only query cache when qtype == 'A' , qclass == 'IN'
 	key := KeyGen(Q)
-	if h.isIPQuery(q) {
+	if IPQuery > 0 {
 		mesg, err := h.cache.Get(key)
 		if err != nil {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
@@ -118,7 +147,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	w.WriteMsg(mesg)
 
-	if h.isIPQuery(q) {
+	if IPQuery > 0 {
 		err = h.cache.Set(key, mesg)
 
 		if err != nil {
@@ -138,8 +167,19 @@ func (h *GODNSHandler) DoUDP(w dns.ResponseWriter, req *dns.Msg) {
 	h.do("udp", w, req)
 }
 
-func (h *GODNSHandler) isIPQuery(q dns.Question) bool {
-	return q.Qtype == dns.TypeA && q.Qclass == dns.ClassINET
+func (h *GODNSHandler) isIPQuery(q dns.Question) int {
+	if q.Qclass != dns.ClassINET {
+		return notIPQuery
+	}
+
+	switch q.Qtype {
+	case dns.TypeA:
+		return _IP4Query
+	case dns.TypeAAAA:
+		return _IP6Query
+	default:
+		return notIPQuery
+	}
 }
 
 func UnFqdn(s string) string {
