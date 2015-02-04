@@ -112,8 +112,10 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			}
 
 			w.WriteMsg(m)
-			Debug("%s found in hosts", Q.qname)
+			Debug("%s found in hosts file", Q.qname)
 			return
+		} else {
+			Debug("%s didn't found in hosts file", Q.qname)
 		}
 
 	}
