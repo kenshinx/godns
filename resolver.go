@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,30 +22,40 @@ func (e ResolvError) Error() string {
 }
 
 type Resolver struct {
-	config        *dns.ClientConfig
+	servers       []string
 	domain_server *suffixTreeNode
+	config        *ResolvSettings
 }
 
 func NewResolver(c ResolvSettings) *Resolver {
-	var clientConfig *dns.ClientConfig
-	clientConfig, err := dns.ClientConfigFromFile(c.ResolvFile)
-	if err != nil {
-		logger.Printf(":%s is not a valid resolv.conf file\n", c.ResolvFile)
-		logger.Println(err)
-		panic(err)
+	r := &Resolver{
+		servers:       []string{},
+		domain_server: newSuffixTreeRoot(),
+		config:        &c,
 	}
-	clientConfig.Timeout = c.Timeout
 
-	domain_server := newSuffixTreeRoot()
-	r := &Resolver{clientConfig, domain_server}
-
-	if len(c.DomainServerFile) > 0 {
-		r.ReadDomainServerFile(c.DomainServerFile)
+	if len(c.ServerListFile) > 0 {
+		r.ReadServerListFile(c.ServerListFile)
+		// Debug("%v", r.servers)
 	}
+
+	if len(c.ResolvFile) > 0 {
+		clientConfig, err := dns.ClientConfigFromFile(c.ResolvFile)
+		if err != nil {
+			logger.Printf(":%s is not a valid resolv.conf file\n", c.ResolvFile)
+			logger.Println(err)
+			panic(err)
+		}
+		for _, server := range clientConfig.Servers {
+			nameserver := server + ":" + clientConfig.Port
+			r.servers = append(r.servers, nameserver)
+		}
+	}
+
 	return r
 }
 
-func (r *Resolver) ReadDomainServerFile(file string) {
+func (r *Resolver) ReadServerListFile(file string) {
 	buf, err := os.Open(file)
 	if err != nil {
 		panic("Can't open " + file)
@@ -66,15 +77,35 @@ func (r *Resolver) ReadDomainServerFile(file string) {
 		line = strings.TrimSpace(sli[1])
 
 		tokens := strings.Split(line, "/")
-		if len(tokens) != 3 {
-			continue
+		switch len(tokens) {
+		case 3:
+			domain := tokens[1]
+			ip := tokens[2]
+			if !isDomain(domain) || !isIP(ip) {
+				continue
+			}
+			r.domain_server.sinsert(strings.Split(domain, "."), ip)
+		case 1:
+			srv_port := strings.Split(line, "#")
+			if len(srv_port) > 2 {
+				continue
+			}
+
+			ip := ""
+			if ip = srv_port[0]; !isIP(ip) {
+				continue
+			}
+
+			port := "53"
+			if len(srv_port) == 2 {
+				if _, err := strconv.Atoi(srv_port[1]); err != nil {
+					continue
+				}
+				port = srv_port[1]
+			}
+			r.servers = append(r.servers, ip+":"+port)
+
 		}
-		domain := tokens[1]
-		ip := tokens[2]
-		if !isDomain(domain) || !isIP(ip) {
-			continue
-		}
-		r.domain_server.sinsert(strings.Split(domain, "."), ip)
 	}
 
 }
@@ -118,8 +149,7 @@ func (r *Resolver) Nameservers(qname string) []string {
 		ns = append(ns, nameserver)
 	}
 
-	for _, server := range r.config.Servers {
-		nameserver := server + ":" + r.config.Port
+	for _, nameserver := range r.servers {
 		ns = append(ns, nameserver)
 	}
 	return ns

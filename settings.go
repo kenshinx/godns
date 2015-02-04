@@ -25,9 +25,9 @@ type Settings struct {
 }
 
 type ResolvSettings struct {
-	ResolvFile       string `toml:"resolv-file"`
-	DomainServerFile string `toml:"domain-server-file"`
-	Timeout          int
+	ServerListFile string `toml:"server-list-file"`
+	ResolvFile     string `toml:"resolv-file"`
+	Timeout        int
 }
 
 type DNSServerSettings struct {
