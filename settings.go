@@ -55,10 +55,11 @@ type CacheSettings struct {
 }
 
 type HostsSettings struct {
-	Enable    bool
-	HostsFile string `toml:"host-file"`
-	RedisKey  string `toml:"redis-key"`
-	TTL       uint32 `toml:"ttl"`
+	Enable      bool
+	HostsFile   string `toml:"host-file"`
+	RedisEnable bool   `toml:"redis-enable"`
+	RedisKey    string `toml:"redis-key"`
+	TTL         uint32 `toml:"ttl"`
 }
 
 func init() {
