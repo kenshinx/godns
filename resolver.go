@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 type ResolvError struct {

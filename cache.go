@@ -4,10 +4,11 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"github.com/hoisie/redis"
-	"github.com/miekg/dns"
 	"sync"
 	"time"
+
+	"github.com/hoisie/redis"
+	"github.com/miekg/dns"
 )
 
 type KeyNotFound struct {

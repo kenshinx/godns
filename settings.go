@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"os"
 	"strconv"
+
+	"github.com/BurntSushi/toml"
 )
 
 var (

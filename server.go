@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/miekg/dns"
 	"strconv"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 type Server struct {
