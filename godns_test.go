@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/miekg/dns"
 	"testing"
+
+	"github.com/miekg/dns"
 )
 
 const (
