@@ -31,13 +31,17 @@ Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 
 		$ sudo ./godns -c godns.conf
 
+4. Test
+        
+        $ dig www.github.com @127.0.0.1
+
+More details about how to install and running godns can reference my [blog (Chinese)](http://blog.kenshinx.me/blog/compile-godns/)
+
 
 ## Use godns 
 
 		$ sudo vi /etc/resolv.conf
 		nameserver #the ip of godns running
-
-
 
 ## Configuration
 
