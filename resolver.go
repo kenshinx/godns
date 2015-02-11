@@ -3,18 +3,19 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
 )
 
 type ResolvError struct {
-	qname       string
+	qname, net  string
 	nameservers []string
 }
 
 func (e ResolvError) Error() string {
-	errmsg := fmt.Sprintf("%s resolv failed on %s", e.qname, strings.Join(e.nameservers, "; "))
+	errmsg := fmt.Sprintf("%s resolv failed on %s (%s)", e.qname, strings.Join(e.nameservers, "; "), e.net)
 	return errmsg
 }
 
@@ -22,6 +23,9 @@ type Resolver struct {
 	config *dns.ClientConfig
 }
 
+// Lookup will ask each namserver in top-to-bottom fashion, starting a new request
+// in every second, and return as early as possbile (have an answer).
+// It returns an error if no request has succeeded.
 func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error) {
 	c := &dns.Client{
 		Net:          net,
@@ -31,28 +35,58 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 
 	qname := req.Question[0].Name
 
-	for _, nameserver := range r.Nameservers() {
+	res := make(chan *dns.Msg, 1)
+	var wg sync.WaitGroup
+	L := func(nameserver string) {
+		defer wg.Done()
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
 			Debug("%s socket error on %s", qname, nameserver)
 			Debug("error:%s", err.Error())
-			continue
+			return
 		}
 		if r != nil && r.Rcode != dns.RcodeSuccess {
 			Debug("%s failed to get an valid answer on %s", qname, nameserver)
-			continue
+			return
 		}
-		Debug("%s resolv on %s ttl: %d", UnFqdn(qname), nameserver, rtt)
-		return r, nil
+		Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
+		select {
+		case res <- r:
+		default:
+		}
 	}
-	return nil, ResolvError{qname, r.Nameservers()}
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	// Start lookup on each nameserver top-down, in every second
+	for _, nameserver := range r.Nameservers() {
+		wg.Add(1)
+		go L(nameserver)
+		// but exit early, if we have an answer
+		select {
+		case <-ticker.C:
+			continue
+		case r := <-res:
+			return r, nil
+		}
+	}
+	// wait for all the namservers to finish
+	wg.Wait()
+	select {
+	case r := <-res:
+		return r, nil
+	default:
+		return nil, ResolvError{qname, net, r.Nameservers()}
+	}
 
 }
 
 func (r *Resolver) Nameservers() (ns []string) {
 	for _, server := range r.config.Servers {
-		nameserver := server + ":" + r.config.Port
-		ns = append(ns, nameserver)
+		if strings.IndexByte(server, ':') < 0 {
+			server = server + ":" + r.config.Port
+		}
+		ns = append(ns, server)
 	}
 	return
 }
