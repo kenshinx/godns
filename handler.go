@@ -7,17 +7,17 @@ import (
 	"github.com/miekg/dns"
 )
 
-type Question struct {
-	qname  string
-	qtype  string
-	qclass string
-}
-
 const (
 	notIPQuery = 0
 	_IP4Query  = 4
 	_IP6Query  = 6
 )
+
+type Question struct {
+	qname  string
+	qtype  string
+	qclass string
+}
 
 func (q *Question) String() string {
 	return q.qname + " " + q.qclass + " " + q.qtype
@@ -117,10 +117,9 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		} else {
 			Debug("%s didn't found in hosts file", Q.qname)
 		}
-
 	}
 
-	// Only query cache when qtype == 'A' , qclass == 'IN'
+	// Only query cache when qtype == 'A'|'AAAA' , qclass == 'IN'
 	key := KeyGen(Q)
 	if IPQuery > 0 {
 		mesg, err := h.cache.Get(key)
@@ -134,7 +133,6 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			h.mu.Unlock()
 			return
 		}
-
 	}
 
 	mesg, err := h.resolver.Lookup(Net, req)
@@ -149,14 +147,11 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	if IPQuery > 0 && len(mesg.Answer) > 0 {
 		err = h.cache.Set(key, mesg)
-
 		if err != nil {
 			Debug("Set %s cache failed: %s", Q.String(), err.Error())
 		}
-
 		Debug("Insert %s into cache", Q.String())
 	}
-
 }
 
 func (h *GODNSHandler) DoTCP(w dns.ResponseWriter, req *dns.Msg) {
