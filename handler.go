@@ -121,8 +121,9 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	}
 
 	// Only query cache when qtype == 'A' , qclass == 'IN'
-	key := KeyGen(Q)
+	var key string
 	if IPQuery > 0 {
+		key = KeyGen(Q)
 		mesg, err := h.cache.Get(key)
 		if err != nil {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
@@ -137,7 +138,44 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	}
 
-	mesg, err := h.resolver.Lookup(Net, req)
+	// Query on both tcp and udp, simultaneously.
+	nextNet := "tcp"
+	if Net == "tcp" {
+		nextNet = "udp"
+	}
+	res := make(chan *dns.Msg, 1)
+	errch := make(chan error, 1)
+
+	L := func(net string) {
+		msg, err := h.resolver.Lookup(net, req)
+		if err != nil {
+			errch <- err
+			return
+		}
+		res <- msg
+	}
+
+	// Start asking on Net
+	go L(Net)
+
+	var (
+		msg *dns.Msg
+		err error
+	)
+	select {
+	case msg = <-res:
+	case err = <-errch:
+	case <-time.After(1 * time.Second):
+	}
+
+	if err != nil || msg == nil {
+		// after 1 second, or error, start on nextNet
+		L(nextNet)
+		select {
+		case msg = <-res:
+		case err = <-errch:
+		}
+	}
 
 	if err != nil {
 		Debug("%s", err)
@@ -145,12 +183,10 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		return
 	}
 
-	w.WriteMsg(mesg)
+	w.WriteMsg(msg)
 
-	if IPQuery > 0 && len(mesg.Answer) > 0 {
-		err = h.cache.Set(key, mesg)
-
-		if err != nil {
+	if key != "" && len(msg.Answer) > 0 {
+		if err := h.cache.Set(key, msg); err != nil {
 			Debug("Set %s cache failed: %s", Q.String(), err.Error())
 		}
 
