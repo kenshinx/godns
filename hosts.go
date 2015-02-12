@@ -36,18 +36,29 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 2. Fetch hosts records from /etc/hosts file and redis per minute
 */
 
-func (h *Hosts) Get(domain string) (ip string, ok bool) {
+func (h *Hosts) Get(domain string, family int) (ip net.IP, ok bool) {
 
-	if ip, ok = h.fileHosts.Get(domain); ok {
-		return
+	var sip string
+
+	if sip, ok = h.fileHosts.Get(domain); !ok {
+		if h.redisHosts != nil {
+			sip, ok = h.redisHosts.Get(domain)
+		}
 	}
 
-	if h.redisHosts != nil {
-		ip, ok = h.redisHosts.Get(domain)
-		return
+	if sip == "" {
+		return nil, false
 	}
 
-	return ip, false
+	switch family {
+	case _IP4Query:
+		ip = net.ParseIP(sip).To4()
+	case _IP6Query:
+		ip = net.ParseIP(sip).To16()
+	default:
+		return nil, false
+	}
+	return ip, (ip != nil)
 }
 
 func (h *Hosts) refresh() {
