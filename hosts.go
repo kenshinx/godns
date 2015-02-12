@@ -2,116 +2,98 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"net"
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hoisie/redis"
 )
 
 type Hosts struct {
-	FileHosts  *FileHosts
-	RedisHosts *RedisHosts
+	fileHosts  *FileHosts
+	redisHosts *RedisHosts
 }
 
 func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
-	fileHosts := &FileHosts{hs.HostsFile}
+	fileHosts := &FileHosts{hs.HostsFile, make(map[string]string)}
 
 	var redisHosts *RedisHosts
 	if hs.RedisEnable {
 		rc := &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
-		redisHosts = &RedisHosts{rc, hs.RedisKey}
-	} else {
-		redisHosts = new(RedisHosts)
+		redisHosts = &RedisHosts{rc, hs.RedisKey, make(map[string]string)}
 	}
 
 	hosts := Hosts{fileHosts, redisHosts}
+	hosts.refresh()
 	return hosts
 
 }
 
 /*
-1. Resolve hosts file only one times
-2. Request redis on every query called, not found performance lose serious yet.
-3. Match local /etc/hosts file first, remote redis records second
+1. Match local /etc/hosts file first, remote redis records second
+2. Fetch hosts records from /etc/hosts file and redis per minute
 */
 
-func (h *Hosts) Get(domain string, family int) (ip net.IP, ok bool) {
-	var sip string
+func (h *Hosts) Get(domain string) (ip string, ok bool) {
 
-	if sip, ok = h.FileHosts.Get(domain); !ok {
-		if sip, ok = h.RedisHosts.Get(domain); !ok {
-			return nil, false
-		}
+	if ip, ok = h.fileHosts.Get(domain); ok {
+		return
 	}
 
-	switch family {
-	case _IP4Query:
-		ip = net.ParseIP(sip).To4()
-		return ip, (ip != nil)
-	case _IP6Query:
-		ip = net.ParseIP(sip).To16()
-		return ip, (ip != nil)
+	if h.redisHosts != nil {
+		ip, ok = h.redisHosts.Get(domain)
+		return
 	}
-	return nil, false
+
+	return ip, false
 }
 
-func (h *Hosts) GetAll() map[string]string {
-
-	m := make(map[string]string)
-	for domain, ip := range h.RedisHosts.GetAll() {
-		m[domain] = ip
-	}
-	for domain, ip := range h.FileHosts.GetAll() {
-		m[domain] = ip
-	}
-	return m
+func (h *Hosts) refresh() {
+	ticker := time.NewTicker(time.Minute)
+	go func() {
+		for {
+			h.fileHosts.Refresh()
+			if h.redisHosts != nil {
+				h.redisHosts.Refresh()
+			}
+			<-ticker.C
+		}
+	}()
 }
 
 type RedisHosts struct {
 	redis *redis.Client
 	key   string
-}
-
-func (r *RedisHosts) GetAll() map[string]string {
-	if r.redis == nil {
-		return map[string]string{}
-	}
-	var hosts = make(map[string]string)
-	r.redis.Hgetall(r.key, hosts)
-	return hosts
+	hosts map[string]string
 }
 
 func (r *RedisHosts) Get(domain string) (ip string, ok bool) {
-	if r.redis == nil {
-		return "", false
-	}
-	b, err := r.redis.Hget(r.key, domain)
-	return string(b), err == nil
-}
-
-func (r *RedisHosts) Set(domain, ip string) (bool, error) {
-	if r.redis == nil {
-		return false, errors.New("Redis not enabled")
-	}
-	return r.redis.Hset(r.key, domain, []byte(ip))
-}
-
-type FileHosts struct {
-	file string
-}
-
-func (f *FileHosts) Get(domain string) (ip string, ok bool) {
-	hosts := f.GetAll()
-	ip, ok = hosts[domain]
+	ip, ok = r.hosts[domain]
 	return
 }
 
-func (f *FileHosts) GetAll() map[string]string {
-	var hosts = make(map[string]string)
+func (r *RedisHosts) Set(domain, ip string) (bool, error) {
+	return r.redis.Hset(r.key, domain, []byte(ip))
+}
 
+func (r *RedisHosts) Refresh() {
+	r.redis.Hgetall(r.key, r.hosts)
+	Debug("update hosts records from redis")
+}
+
+type FileHosts struct {
+	file  string
+	hosts map[string]string
+}
+
+func (f *FileHosts) Get(domain string) (ip string, ok bool) {
+	ip, ok = f.hosts[domain]
+	return
+}
+
+func (f *FileHosts) Refresh() {
 	buf, err := os.Open(f.file)
 	if err != nil {
 		panic("Can't open " + f.file)
@@ -142,9 +124,9 @@ func (f *FileHosts) GetAll() map[string]string {
 			continue
 		}
 
-		hosts[domain] = ip
+		f.hosts[domain] = ip
 	}
-	return hosts
+	Debug("update hosts records from %s", f.file)
 }
 
 func (f *FileHosts) isDomain(domain string) bool {

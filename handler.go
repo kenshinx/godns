@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"sync"
 	"time"
 
@@ -86,7 +87,8 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	// Query hosts
 	if settings.Hosts.Enable && IPQuery > 0 {
-		if ip, ok := h.hosts.Get(Q.qname, IPQuery); ok {
+		if sip, ok := h.hosts.Get(Q.qname); ok {
+			var ip net.IP
 			m := new(dns.Msg)
 			m.SetReply(req)
 
@@ -98,6 +100,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					Class:  dns.ClassINET,
 					Ttl:    settings.Hosts.TTL,
 				}
+				ip = net.ParseIP(sip).To4()
 				a := &dns.A{rr_header, ip}
 				m.Answer = append(m.Answer, a)
 			case _IP6Query:
@@ -107,6 +110,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					Class:  dns.ClassINET,
 					Ttl:    settings.Hosts.TTL,
 				}
+				ip = net.ParseIP(sip).To16()
 				aaaa := &dns.AAAA{rr_header, ip}
 				m.Answer = append(m.Answer, aaaa)
 			}
