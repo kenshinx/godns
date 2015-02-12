@@ -27,7 +27,6 @@ type GODNSHandler struct {
 	resolver *Resolver
 	cache    Cache
 	hosts    Hosts
-	mu       *sync.Mutex
 }
 
 func NewHandler() *GODNSHandler {
@@ -73,7 +72,7 @@ func NewHandler() *GODNSHandler {
 
 	hosts := NewHosts(settings.Hosts, settings.Redis)
 
-	return &GODNSHandler{resolver, cache, hosts, new(sync.Mutex)}
+	return &GODNSHandler{resolver, cache, hosts}
 }
 
 func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
@@ -127,10 +126,8 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			Debug("%s didn't hit cache: %s", Q.String(), err)
 		} else {
 			Debug("%s hit cache", Q.String())
-			h.mu.Lock()
 			mesg.Id = req.Id
 			w.WriteMsg(mesg)
-			h.mu.Unlock()
 			return
 		}
 	}
