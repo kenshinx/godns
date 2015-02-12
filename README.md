@@ -7,11 +7,9 @@ A simple and fast dns cache server written by go.
 Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support some difference features:
 
 
-* Keep hosts records in redis instead of the local file /etc/hosts  
+* Keep hosts records in redis and the local file /etc/hosts  
 
 * Auto-Reloads when hosts configuration is changed. (Yes, dnsmasq needs to be reloaded)
-
-* Cache records save in memory or redis configurable
 
 
 ## Installation & Running
@@ -24,7 +22,7 @@ Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support
 2. Build  
 
 		$ cd $GOPATH/src/github.com/kenshinx/godns 
-		$ go build -o godns *.go
+		$ go build -o godns 
 
 
 3. Running  
