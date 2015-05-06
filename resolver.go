@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
-	"sync"
+	//"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -36,9 +36,9 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 	qname := req.Question[0].Name
 
 	res := make(chan *dns.Msg, 1)
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	L := func(nameserver string) {
-		defer wg.Done()
+		//defer wg.Done()
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
 			Debug("%s socket error on %s", qname, nameserver)
@@ -56,26 +56,26 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		}
 	}
 
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(r.Timeout())
 	defer ticker.Stop()
 	// Start lookup on each nameserver top-down, in every second
 	for _, nameserver := range r.Nameservers() {
-		wg.Add(1)
+		//wg.Add(1)
 		go L(nameserver)
 		// but exit early, if we have an answer
-		select {
-		case r := <-res:
-			return r, nil
-		case <-ticker.C:
-			continue
-		}
+//		select {
+//		case r := <-res:
+//			return r, nil
+//		case <-ticker.C:
+//			continue
+//		}
 	}
 	// wait for all the namservers to finish
-	wg.Wait()
+	//wg.Wait()
 	select {
 	case r := <-res:
 		return r, nil
-	default:
+	case <-ticker.C:
 		return nil, ResolvError{qname, net, r.Nameservers()}
 	}
 
