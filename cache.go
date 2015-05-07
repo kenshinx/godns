@@ -58,7 +58,7 @@ type MemoryCache struct {
 	Backend  map[string]Mesg
 	Expire   time.Duration
 	Maxcount int
-	mu       *sync.RWMutex
+	mu       sync.RWMutex
 }
 
 func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
@@ -92,9 +92,9 @@ func (c *MemoryCache) Set(key string, msg *dns.Msg) error {
 }
 
 func (c *MemoryCache) Remove(key string) {
-	c.mu.RLock()
+	c.mu.Lock()
 	delete(c.Backend, key)
-	c.mu.RUnlock()
+	c.mu.Unlock()
 }
 
 func (c *MemoryCache) Exists(key string) bool {
