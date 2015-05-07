@@ -56,7 +56,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		}
 	}
 
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Duration(settings.ResolvConfig.Interval) * time.Millisecond)
 	defer ticker.Stop()
 	// Start lookup on each nameserver top-down, in every second
 	for _, nameserver := range r.Nameservers() {
