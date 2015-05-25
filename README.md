@@ -173,7 +173,8 @@ stdout_logfile = /var/log/godns.log
 * The redis cache backend
 * Update ttl
 
-
+## LICENSE
+godns is under the MIT license. See the LICENSE file for details.
 
 
 
