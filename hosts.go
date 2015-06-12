@@ -109,6 +109,7 @@ func (f *FileHosts) Refresh() {
 	if err != nil {
 		panic("Can't open " + f.file)
 	}
+	defer buf.Close()
 
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
