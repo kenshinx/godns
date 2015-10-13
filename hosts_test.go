@@ -20,8 +20,8 @@ func TestHostDomainAndIP(t *testing.T) {
 			So(f.isDomain("2001:470:20::2"), ShouldEqual, false)
 		})
 
-		Convey("`host` should be domain and not IP", func() {
-			So(f.isDomain("host"), ShouldEqual, true)
+		Convey("`host` should not be domain and not IP", func() {
+			So(f.isDomain("host"), ShouldEqual, false)
 			So(f.isIP("host"), ShouldEqual, false)
 		})
 
