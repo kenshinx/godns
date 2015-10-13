@@ -73,7 +73,10 @@ func NewHandler() *GODNSHandler {
 		panic("Invalid cache backend")
 	}
 
-	hosts := NewHosts(settings.Hosts, settings.Redis)
+	var hosts Hosts
+	if settings.Hosts.Enable {
+		hosts = NewHosts(settings.Hosts, settings.Redis)
+	}
 
 	return &GODNSHandler{resolver, cache, negCache, hosts}
 }
