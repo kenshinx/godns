@@ -13,6 +13,14 @@ var (
 	settings Settings
 )
 
+var LogLevelMap = map[string]int{
+	"DEBUG":  LevelDebug,
+	"INFO":   LevelInfo,
+	"NOTICE": LevelNotice,
+	"WARN":   LevelWarn,
+	"ERROR":  LevelError,
+}
+
 type Settings struct {
 	Version      string
 	Debug        bool
@@ -47,7 +55,17 @@ func (s RedisSettings) Addr() string {
 }
 
 type LogSettings struct {
-	File string
+	Stdout bool
+	File   string
+	Level  string
+}
+
+func (ls LogSettings) LogLevel() int {
+	l, ok := LogLevelMap[ls.Level]
+	if !ok {
+		panic("Config error: invalid log level: " + ls.Level)
+	}
+	return l
 }
 
 type CacheSettings struct {

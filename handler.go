@@ -40,8 +40,8 @@ func NewHandler() *GODNSHandler {
 	resolvConfig := settings.ResolvConfig
 	clientConfig, err := dns.ClientConfigFromFile(resolvConfig.ResolvFile)
 	if err != nil {
-		logger.Printf(":%s is not a valid resolv.conf file\n", resolvConfig.ResolvFile)
-		logger.Println(err)
+		logger.Warn(":%s is not a valid resolv.conf file\n", resolvConfig.ResolvFile)
+		logger.Error(err.Error())
 		panic(err)
 	}
 	clientConfig.Timeout = resolvConfig.Timeout
@@ -69,7 +69,7 @@ func NewHandler() *GODNSHandler {
 		// }
 		panic("Redis cache backend not implement yet")
 	default:
-		logger.Printf("Invalid cache backend %s", cacheConfig.Backend)
+		logger.Error("Invalid cache backend %s", cacheConfig.Backend)
 		panic("Invalid cache backend")
 	}
 
