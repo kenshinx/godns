@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"time"
 
 	"github.com/miekg/dns"
@@ -85,7 +86,13 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	q := req.Question[0]
 	Q := Question{UnFqdn(q.Name), dns.TypeToString[q.Qtype], dns.ClassToString[q.Qclass]}
 
-	Debug("Question:　%s", Q.String())
+	var remote net.IP
+	if Net == "tcp" {
+		remote = w.RemoteAddr().(*net.TCPAddr).IP
+	} else {
+		remote = w.RemoteAddr().(*net.UDPAddr).IP
+	}
+	logger.Info("%s lookup　%s", remote, Q.String())
 
 	IPQuery := h.isIPQuery(q)
 
@@ -117,10 +124,10 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			}
 
 			w.WriteMsg(m)
-			Debug("%s found in hosts file", Q.qname)
+			logger.Debug("%s found in hosts file", Q.qname)
 			return
 		} else {
-			Debug("%s didn't found in hosts file", Q.qname)
+			logger.Debug("%s didn't found in hosts file", Q.qname)
 		}
 	}
 
@@ -130,14 +137,14 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		mesg, err := h.cache.Get(key)
 		if err != nil {
 			if mesg, err = h.negCache.Get(key); err != nil {
-				Debug("%s didn't hit cache: %s", Q.String(), err)
+				logger.Debug("%s didn't hit cache", Q.String())
 			} else {
-				Debug("%s hit negative cache", Q.String())
+				logger.Debug("%s hit negative cache", Q.String())
 				dns.HandleFailed(w, req)
 				return
 			}
 		} else {
-			Debug("%s hit cache", Q.String())
+			logger.Debug("%s hit cache", Q.String())
 			// we need this copy against concurrent modification of Id
 			msg := *mesg
 			msg.Id = req.Id
@@ -149,12 +156,12 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	mesg, err := h.resolver.Lookup(Net, req)
 
 	if err != nil {
-		Debug("%s", err)
+		logger.Warn("Resolve query error %s", err)
 		dns.HandleFailed(w, req)
 
 		// cache the failure, too!
 		if err = h.negCache.Set(key, nil); err != nil {
-			Debug("Set %s negative cache failed: %v", Q.String(), err)
+			logger.Warn("Set %s negative cache failed: %v", Q.String(), err)
 		}
 		return
 	}
@@ -164,9 +171,9 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	if IPQuery > 0 && len(mesg.Answer) > 0 {
 		err = h.cache.Set(key, mesg)
 		if err != nil {
-			Debug("Set %s cache failed: %s", Q.String(), err.Error())
+			logger.Warn("Set %s cache failed: %s", Q.String(), err.Error())
 		}
-		Debug("Insert %s into cache", Q.String())
+		logger.Debug("Insert %s into cache", Q.String())
 	}
 }
 

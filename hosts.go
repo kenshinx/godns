@@ -90,8 +90,12 @@ func (r *RedisHosts) Set(domain, ip string) (bool, error) {
 }
 
 func (r *RedisHosts) Refresh() {
-	r.redis.Hgetall(r.key, r.hosts)
-	Debug("update hosts records from redis")
+	err := r.redis.Hgetall(r.key, r.hosts)
+	if err != nil {
+		logger.Warn("Update hosts records from redis failed %s", err)
+	} else {
+		logger.Debug("Update hosts records from redis")
+	}
 }
 
 type FileHosts struct {
@@ -107,7 +111,8 @@ func (f *FileHosts) Get(domain string) (ip string, ok bool) {
 func (f *FileHosts) Refresh() {
 	buf, err := os.Open(f.file)
 	if err != nil {
-		panic("Can't open " + f.file)
+		logger.Warn("Update hosts records from file failed %s", err)
+		return
 	}
 	defer buf.Close()
 
@@ -138,7 +143,7 @@ func (f *FileHosts) Refresh() {
 
 		f.hosts[domain] = ip
 	}
-	Debug("update hosts records from %s", f.file)
+	logger.Debug("update hosts records from %s", f.file)
 }
 
 func (f *FileHosts) isDomain(domain string) bool {

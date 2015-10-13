@@ -41,15 +41,15 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		defer wg.Done()
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
-			Debug("%s socket error on %s", qname, nameserver)
-			Debug("error:%s", err.Error())
+			logger.Warn("%s socket error on %s", qname, nameserver)
+			logger.Warn("error:%s", err.Error())
 			return
 		}
 		if r != nil && r.Rcode != dns.RcodeSuccess {
-			Debug("%s failed to get an valid answer on %s", qname, nameserver)
+			logger.Warn("%s failed to get an valid answer on %s", qname, nameserver)
 			return
 		}
-		Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
+		logger.Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
 		select {
 		case res <- r:
 		default:
