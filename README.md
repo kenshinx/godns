@@ -87,6 +87,12 @@ can be assigned at godns.conf,default : `/etc/hosts`
 [hosts]
 host-file = "/etc/hosts"
 ```
+Hosts file format is described in [linux man pages](http://man7.org/linux/man-pages/man5/hosts.5.html). 
+More than that , `*.` wildcard is supported additional.
+
+```
+127.0.0.1 *.example.com
+```
 
 
 __redis hosts__ 
@@ -105,7 +111,7 @@ redis-key = "godns:hosts"
 _Insert hosts records into redis_
 
 ```
-redis > hset godns:hosts www.sina.com.cn 1.1.1.1
+redis > hset godns:hosts www.test.com 1.1.1.1
 ```
 
 

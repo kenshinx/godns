@@ -17,12 +17,12 @@ type Hosts struct {
 }
 
 func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
-	fileHosts := &FileHosts{hs.HostsFile, make(map[string]string)}
+	fileHosts := &FileHosts{BaseHosts{make(map[string]string)}, hs.HostsFile}
 
 	var redisHosts *RedisHosts
 	if hs.RedisEnable {
 		rc := &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
-		redisHosts = &RedisHosts{rc, hs.RedisKey, make(map[string]string)}
+		redisHosts = &RedisHosts{BaseHosts{make(map[string]string)}, rc, hs.RedisKey}
 	}
 
 	hosts := Hosts{fileHosts, redisHosts}
@@ -32,10 +32,8 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 }
 
 /*
-1. Match local /etc/hosts file first, remote redis records second
-2. Fetch hosts records from /etc/hosts file and redis per minute
+Match local /etc/hosts file first, remote redis records second
 */
-
 func (h *Hosts) Get(domain string, family int) (ip net.IP, ok bool) {
 
 	var sip string
@@ -61,6 +59,9 @@ func (h *Hosts) Get(domain string, family int) (ip net.IP, ok bool) {
 	return ip, (ip != nil)
 }
 
+/*
+Update hosts records from /etc/hosts file and redis per minute
+*/
 func (h *Hosts) refresh() {
 	ticker := time.NewTicker(time.Minute)
 	go func() {
@@ -74,15 +75,32 @@ func (h *Hosts) refresh() {
 	}()
 }
 
-type RedisHosts struct {
-	redis *redis.Client
-	key   string
+type BaseHosts struct {
 	hosts map[string]string
 }
 
-func (r *RedisHosts) Get(domain string) (ip string, ok bool) {
-	ip, ok = r.hosts[domain]
+func (h *BaseHosts) Get(domain string) (ip string, ok bool) {
+	ip, ok = h.hosts[domain]
+	if ok {
+		return
+	}
+
+	for host, ip := range h.hosts {
+		if strings.HasPrefix(host, "*.") {
+			upperLevelDomain := strings.Split(host, "*.")[1]
+			if strings.HasSuffix(domain, upperLevelDomain) {
+				return ip, true
+			}
+		}
+	}
+
 	return
+}
+
+type RedisHosts struct {
+	BaseHosts
+	redis *redis.Client
+	key   string
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
@@ -99,13 +117,8 @@ func (r *RedisHosts) Refresh() {
 }
 
 type FileHosts struct {
-	file  string
-	hosts map[string]string
-}
-
-func (f *FileHosts) Get(domain string) (ip string, ok bool) {
-	ip, ok = f.hosts[domain]
-	return
+	BaseHosts
+	file string
 }
 
 func (f *FileHosts) Refresh() {
@@ -150,7 +163,7 @@ func (f *FileHosts) isDomain(domain string) bool {
 	if f.isIP(domain) {
 		return false
 	}
-	match, _ := regexp.MatchString(`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$`, domain)
+	match, _ := regexp.MatchString(`^([a-zA-Z0-9\*]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$`, domain)
 	return match
 }
 
