@@ -90,10 +90,6 @@ host-file = "/etc/hosts"
 Hosts file format is described in [linux man pages](http://man7.org/linux/man-pages/man5/hosts.5.html). 
 More than that , `*.` wildcard is supported additional.
 
-```
-127.0.0.1 *.example.com
-```
-
 
 __redis hosts__ 
 
@@ -114,6 +110,18 @@ _Insert hosts records into redis_
 redis > hset godns:hosts www.test.com 1.1.1.1
 ```
 
+Compared with file-backend records, redis-backend hosts support two advanced records formatting.
+
+1. `*.` wildcard
+
+```
+redis > hset 127.0.0.1 *.example.com
+```
+2. Multiple A entries, delimited by commas
+
+```
+redis > hset www.test.com 1.1.1.1,2.2.2.2
+```
 
 
 ## Benchmark

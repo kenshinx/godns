@@ -34,29 +34,38 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 /*
 Match local /etc/hosts file first, remote redis records second
 */
-func (h *Hosts) Get(domain string, family int) (ip net.IP, ok bool) {
+func (h *Hosts) Get(domain string, family int) ([]net.IP, bool) {
 
-	var sip string
+	var sips []string
+	var ip net.IP
+	var ips []net.IP
 
-	if sip, ok = h.fileHosts.Get(domain); !ok {
+	sips, ok := h.fileHosts.Get(domain)
+	if !ok {
 		if h.redisHosts != nil {
-			sip, ok = h.redisHosts.Get(domain)
+			sips, ok = h.redisHosts.Get(domain)
 		}
 	}
 
-	if sip == "" {
+	if sips == nil {
 		return nil, false
 	}
 
-	switch family {
-	case _IP4Query:
-		ip = net.ParseIP(sip).To4()
-	case _IP6Query:
-		ip = net.ParseIP(sip).To16()
-	default:
-		return nil, false
+	for _, sip := range sips {
+		switch family {
+		case _IP4Query:
+			ip = net.ParseIP(sip).To4()
+		case _IP6Query:
+			ip = net.ParseIP(sip).To16()
+		default:
+			continue
+		}
+		if ip != nil {
+			ips = append(ips, ip)
+		}
 	}
-	return ip, (ip != nil)
+
+	return ips, (ips != nil)
 }
 
 /*
@@ -85,21 +94,21 @@ type RedisHosts struct {
 	hosts map[string]string
 }
 
-func (r *RedisHosts) Get(domain string) (ip string, ok bool) {
-	ip, ok = r.hosts[domain]
+func (r *RedisHosts) Get(domain string) ([]string, bool) {
+	ip, ok := r.hosts[domain]
 	if ok {
-		return
+		return strings.Split(ip, ","), true
 	}
 
 	for host, ip := range r.hosts {
 		if strings.HasPrefix(host, "*.") {
 			upperLevelDomain := strings.Split(host, "*.")[1]
 			if strings.HasSuffix(domain, upperLevelDomain) {
-				return ip, true
+				return strings.Split(ip, ","), true
 			}
 		}
 	}
-	return
+	return nil, false
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
@@ -120,9 +129,12 @@ type FileHosts struct {
 	hosts map[string]string
 }
 
-func (f *FileHosts) Get(domain string) (ip string, ok bool) {
-	ip, ok = f.hosts[domain]
-	return
+func (f *FileHosts) Get(domain string) ([]string, bool) {
+	ip, ok := f.hosts[domain]
+	if !ok {
+		return nil, false
+	}
+	return []string{ip}, true
 }
 
 func (f *FileHosts) Refresh() {

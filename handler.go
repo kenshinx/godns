@@ -98,7 +98,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	// Query hosts
 	if settings.Hosts.Enable && IPQuery > 0 {
-		if ip, ok := h.hosts.Get(Q.qname, IPQuery); ok {
+		if ips, ok := h.hosts.Get(Q.qname, IPQuery); ok {
 			m := new(dns.Msg)
 			m.SetReply(req)
 
@@ -110,8 +110,10 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					Class:  dns.ClassINET,
 					Ttl:    settings.Hosts.TTL,
 				}
-				a := &dns.A{rr_header, ip}
-				m.Answer = append(m.Answer, a)
+				for _, ip := range ips {
+					a := &dns.A{rr_header, ip}
+					m.Answer = append(m.Answer, a)
+				}
 			case _IP6Query:
 				rr_header := dns.RR_Header{
 					Name:   q.Name,
@@ -119,8 +121,10 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					Class:  dns.ClassINET,
 					Ttl:    settings.Hosts.TTL,
 				}
-				aaaa := &dns.AAAA{rr_header, ip}
-				m.Answer = append(m.Answer, aaaa)
+				for _, ip := range ips {
+					aaaa := &dns.AAAA{rr_header, ip}
+					m.Answer = append(m.Answer, aaaa)
+				}
 			}
 
 			w.WriteMsg(m)
