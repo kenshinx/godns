@@ -17,12 +17,12 @@ type Hosts struct {
 }
 
 func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
-	fileHosts := &FileHosts{BaseHosts{make(map[string]string)}, hs.HostsFile}
+	fileHosts := &FileHosts{hs.HostsFile, make(map[string]string)}
 
 	var redisHosts *RedisHosts
 	if hs.RedisEnable {
 		rc := &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
-		redisHosts = &RedisHosts{BaseHosts{make(map[string]string)}, rc, hs.RedisKey}
+		redisHosts = &RedisHosts{rc, hs.RedisKey, make(map[string]string)}
 	}
 
 	hosts := Hosts{fileHosts, redisHosts}
@@ -79,13 +79,19 @@ type BaseHosts struct {
 	hosts map[string]string
 }
 
-func (h *BaseHosts) Get(domain string) (ip string, ok bool) {
-	ip, ok = h.hosts[domain]
+type RedisHosts struct {
+	redis *redis.Client
+	key   string
+	hosts map[string]string
+}
+
+func (r *RedisHosts) Get(domain string) (ip string, ok bool) {
+	ip, ok = r.hosts[domain]
 	if ok {
 		return
 	}
 
-	for host, ip := range h.hosts {
+	for host, ip := range r.hosts {
 		if strings.HasPrefix(host, "*.") {
 			upperLevelDomain := strings.Split(host, "*.")[1]
 			if strings.HasSuffix(domain, upperLevelDomain) {
@@ -93,14 +99,7 @@ func (h *BaseHosts) Get(domain string) (ip string, ok bool) {
 			}
 		}
 	}
-
 	return
-}
-
-type RedisHosts struct {
-	BaseHosts
-	redis *redis.Client
-	key   string
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
@@ -117,8 +116,13 @@ func (r *RedisHosts) Refresh() {
 }
 
 type FileHosts struct {
-	BaseHosts
-	file string
+	file  string
+	hosts map[string]string
+}
+
+func (f *FileHosts) Get(domain string) (ip string, ok bool) {
+	ip, ok = f.hosts[domain]
+	return
 }
 
 func (f *FileHosts) Refresh() {
