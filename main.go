@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"time"
 )
 
@@ -26,6 +27,11 @@ func main() {
 
 	logger.Info("godns %s start", settings.Version)
 
+	if settings.Debug {
+		go profileCPU()
+		go profileMEM()
+	}
+
 	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt)
 
@@ -37,6 +43,35 @@ forever:
 			break forever
 		}
 	}
+
+}
+
+func profileCPU() {
+	f, err := os.Create("godns.cprof")
+	if err != nil {
+		logger.Error("%s", err)
+		return
+	}
+
+	pprof.StartCPUProfile(f)
+	time.AfterFunc(6*time.Minute, func() {
+		pprof.StopCPUProfile()
+		f.Close()
+
+	})
+}
+
+func profileMEM() {
+	f, err := os.Create("godns.mprof")
+	if err != nil {
+		logger.Error("%s", err)
+		return
+	}
+
+	time.AfterFunc(5*time.Minute, func() {
+		pprof.WriteHeapProfile(f)
+		f.Close()
+	})
 
 }
 
