@@ -116,7 +116,7 @@ redis > hset godns:hosts www.test.com 1.1.1.1
 
 
 
-## Benchmak
+## Benchmark
 
 
 __Debug close__
