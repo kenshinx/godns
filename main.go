@@ -40,12 +40,6 @@ forever:
 
 }
 
-func Debug(format string, v ...interface{}) {
-	if settings.Debug {
-		logger.Debug(format, v...)
-	}
-}
-
 func initLogger() {
 	logger = NewLogger()
 
