@@ -113,14 +113,14 @@ redis > hset godns:hosts www.test.com 1.1.1.1
 Compared with file-backend records, redis-backend hosts support two advanced records formatting.
 
 1. `*.` wildcard
-```
-redis > hset godns:hosts *.example.com 127.0.0.1
-```
+	```
+	redis > hset godns:hosts *.example.com 127.0.0.1
+	```
 
 2. Multiple A entries, delimited by commas
-```
-redis > hset godns:hosts www.test.com 1.1.1.1,2.2.2.2
-```
+	```
+	redis > hset godns:hosts www.test.com 1.1.1.1,2.2.2.2
+	```
 
 
 ## Benchmark
