@@ -145,6 +145,8 @@ func (f *FileHosts) Refresh() {
 	}
 	defer buf.Close()
 
+	f.clear()
+
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 
@@ -173,6 +175,10 @@ func (f *FileHosts) Refresh() {
 		f.hosts[domain] = ip
 	}
 	logger.Debug("update hosts records from %s", f.file)
+}
+
+func (f *FileHosts) clear() {
+	f.hosts = make(map[string]string)
 }
 
 func (f *FileHosts) isDomain(domain string) bool {
