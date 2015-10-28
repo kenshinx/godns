@@ -47,9 +47,9 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		}
 		if r != nil && r.Rcode != dns.RcodeSuccess {
 			Debug("%s failed to get an valid answer on %s", qname, nameserver)
-			return
+		} else {
+			Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
 		}
-		Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
 		select {
 		case res <- r:
 		default:
