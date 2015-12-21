@@ -110,7 +110,7 @@ _Insert hosts records into redis_
 redis > hset godns:hosts www.test.com 1.1.1.1
 ```
 
-Compared with file-backend records, redis-backend hosts support two advanced records formatting.
+Compared with file-backend records, redis-backend hosts support three advanced records formatting.
 
 1. `*.` wildcard
 	```
@@ -120,6 +120,11 @@ Compared with file-backend records, redis-backend hosts support two advanced rec
 2. Multiple A entries, delimited by commas
 	```
 	redis > hset godns:hosts www.test.com 1.1.1.1,2.2.2.2
+	```
+
+3. TXT entries, delimited by double quotes ("), multiple quoted strings are concatenated
+	```
+	redis > hset godns:hosts www.test.com "1.1.1.1,2.2.2.2,\""TXT entry\""
 	```
 
 

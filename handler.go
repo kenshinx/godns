@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	notIPQuery = 0
-	_IP4Query  = 4
-	_IP6Query  = 6
+	notIPQuery  = 0
+	_AQuery     = 1
+//	_CNAMEQuery = 5
+	_TXTQuery   = 16
+	_AAAAQuery  = 28
 )
 
 type Question struct {
@@ -98,12 +100,12 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	// Query hosts
 	if settings.Hosts.Enable && IPQuery > 0 {
-		if ips, ok := h.hosts.Get(Q.qname, IPQuery); ok {
+		if ips, str, ok := h.hosts.Get(Q.qname, IPQuery); ok {
 			m := new(dns.Msg)
 			m.SetReply(req)
 
 			switch IPQuery {
-			case _IP4Query:
+			case _AQuery:
 				rr_header := dns.RR_Header{
 					Name:   q.Name,
 					Rrtype: dns.TypeA,
@@ -114,7 +116,16 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					a := &dns.A{rr_header, ip}
 					m.Answer = append(m.Answer, a)
 				}
-			case _IP6Query:
+			case _TXTQuery:
+				rr_header := dns.RR_Header{
+					Name:   q.Name,
+					Rrtype: dns.TypeTXT,
+					Class:  dns.ClassINET,
+					Ttl:    settings.Hosts.TTL,
+				}
+				txt := &dns.TXT{rr_header, []string{str}}
+				m.Answer = append(m.Answer, txt)
+			case _AAAAQuery:
 				rr_header := dns.RR_Header{
 					Name:   q.Name,
 					Rrtype: dns.TypeAAAA,
@@ -135,7 +146,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		}
 	}
 
-	// Only query cache when qtype == 'A'|'AAAA' , qclass == 'IN'
+	// Only query cache when qtype == 'A'|'AAAA'|'TXT' , qclass == 'IN'
 	key := KeyGen(Q)
 	if IPQuery > 0 {
 		mesg, err := h.cache.Get(key)
@@ -196,9 +207,11 @@ func (h *GODNSHandler) isIPQuery(q dns.Question) int {
 
 	switch q.Qtype {
 	case dns.TypeA:
-		return _IP4Query
+		return _AQuery
 	case dns.TypeAAAA:
-		return _IP6Query
+		return _AAAAQuery
+	case dns.TypeTXT:
+		return _TXTQuery	
 	default:
 		return notIPQuery
 	}
