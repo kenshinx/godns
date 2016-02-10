@@ -40,10 +40,10 @@ func (h *Hosts) Get(domain string, family int) ([]net.IP, bool) {
 	var ip net.IP
 	var ips []net.IP
 
-	sips, ok := h.fileHosts.Get(domain)
+	sips, ok := h.fileHosts.Get(strings.ToLower(domain))
 	if !ok {
 		if h.redisHosts != nil {
-			sips, ok = h.redisHosts.Get(domain)
+			sips, ok = h.redisHosts.Get(strings.ToLower(domain))
 		}
 	}
 
@@ -95,7 +95,7 @@ type RedisHosts struct {
 }
 
 func (r *RedisHosts) Get(domain string) ([]string, bool) {
-	ip, ok := r.hosts[domain]
+	ip, ok := r.hosts[strings.ToLower(domain)]
 	if ok {
 		return strings.Split(ip, ","), true
 	}
@@ -112,7 +112,7 @@ func (r *RedisHosts) Get(domain string) ([]string, bool) {
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
-	return r.redis.Hset(r.key, domain, []byte(ip))
+	return r.redis.Hset(r.key, strings.ToLower(domain), []byte(ip))
 }
 
 func (r *RedisHosts) Refresh() {
@@ -130,7 +130,7 @@ type FileHosts struct {
 }
 
 func (f *FileHosts) Get(domain string) ([]string, bool) {
-	ip, ok := f.hosts[domain]
+	ip, ok := f.hosts[strings.ToLower(domain)]
 	if !ok {
 		return nil, false
 	}
@@ -151,7 +151,7 @@ func (f *FileHosts) Refresh() {
 	for scanner.Scan() {
 
 		line := scanner.Text()
-		line = strings.TrimSpace(line)
+		line = strings.TrimSpace(strings.ToLower(line))
 
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
@@ -172,7 +172,7 @@ func (f *FileHosts) Refresh() {
 			continue
 		}
 
-		f.hosts[domain] = ip
+		f.hosts[strings.ToLower(domain)] = ip
 	}
 	logger.Debug("update hosts records from %s", f.file)
 }
