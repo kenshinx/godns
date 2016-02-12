@@ -61,6 +61,13 @@ func NewHandler() *GODNSHandler {
 			Expire:   time.Duration(cacheConfig.Expire) * time.Second / 2,
 			Maxcount: cacheConfig.Maxcount,
 		}
+	case "memcache":
+		cache = NewMemcachedCache(
+			settings.Memcache.Servers,
+			int32(cacheConfig.Expire))
+		negCache = NewMemcachedCache(
+			settings.Memcache.Servers,
+			int32(cacheConfig.Expire/2))
 	case "redis":
 		// cache = &MemoryCache{
 		// 	Backend:    make(map[string]*dns.Msg),
