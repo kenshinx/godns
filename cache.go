@@ -36,10 +36,11 @@ func (e CacheIsFull) Error() string {
 }
 
 type SerializerError struct {
+	err error
 }
 
 func (e SerializerError) Error() string {
-	return "Serializer error"
+	return fmt.Sprintf("Serializer error: got %v", e.err)
 }
 
 type Mesg struct {
@@ -53,11 +54,6 @@ type Cache interface {
 	Exists(key string) bool
 	Remove(key string) error
 	Full() bool
-}
-
-type Serializer interface {
-	Loads([]byte) (*dns.Msg, error)
-	Dumps(*dns.Msg) ([]byte, error)
 }
 
 type MemoryCache struct {
@@ -132,16 +128,14 @@ Memcached backend
 func NewMemcachedCache(servers []string, expire int32) *MemcachedCache {
 	c := memcache.New(servers...)
 	return &MemcachedCache{
-		backend:    c,
-		serializer: &JsonSerializer{},
-		expire:     expire,
+		backend: c,
+		expire:  expire,
 	}
 }
 
 type MemcachedCache struct {
-	backend    *memcache.Client
-	serializer Serializer
-	expire     int32
+	backend *memcache.Client
+	expire  int32
 }
 
 func (m *MemcachedCache) Set(key string, msg *dns.Msg) error {
@@ -152,22 +146,26 @@ func (m *MemcachedCache) Set(key string, msg *dns.Msg) error {
 	if msg == nil {
 		val = []byte("nil")
 	} else {
-		val, err = m.serializer.Dumps(msg)
+		val, err = msg.Pack()
 	}
 	if err != nil {
-		return err
+		err = SerializerError{err}
 	}
 	return m.backend.Set(&memcache.Item{Key: key, Value: val, Expiration: m.expire})
 }
 
-func (m *MemcachedCache) Get(key string) (msg *dns.Msg, err error) {
+func (m *MemcachedCache) Get(key string) (*dns.Msg, error) {
+	var msg dns.Msg
 	item, err := m.backend.Get(key)
 	if err != nil {
 		err = KeyNotFound{key}
-		return
+		return &msg, err
 	}
-	msg, err = m.serializer.Loads(item.Value)
-	return
+	err = msg.Unpack(item.Value)
+	if err != nil {
+		err = SerializerError{err}
+	}
+	return &msg, err
 }
 
 func (m *MemcachedCache) Exists(key string) bool {
