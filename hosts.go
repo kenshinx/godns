@@ -95,6 +95,7 @@ type RedisHosts struct {
 }
 
 func (r *RedisHosts) Get(domain string) ([]string, bool) {
+	domain = strings.ToLower(domain)
 	ip, ok := r.hosts[domain]
 	if ok {
 		return strings.Split(ip, ","), true
@@ -112,7 +113,7 @@ func (r *RedisHosts) Get(domain string) ([]string, bool) {
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
-	return r.redis.Hset(r.key, domain, []byte(ip))
+	return r.redis.Hset(r.key, strings.ToLower(domain), []byte(ip))
 }
 
 func (r *RedisHosts) Refresh() {
@@ -130,6 +131,7 @@ type FileHosts struct {
 }
 
 func (f *FileHosts) Get(domain string) ([]string, bool) {
+	domain = strings.ToLower(domain)
 	ip, ok := f.hosts[domain]
 	if !ok {
 		return nil, false
@@ -172,7 +174,7 @@ func (f *FileHosts) Refresh() {
 			continue
 		}
 
-		f.hosts[domain] = ip
+		f.hosts[strings.ToLower(domain)] = ip
 	}
 	logger.Debug("update hosts records from %s", f.file)
 }
