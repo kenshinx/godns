@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hoisie/redis"
@@ -17,12 +18,19 @@ type Hosts struct {
 }
 
 func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
-	fileHosts := &FileHosts{hs.HostsFile, make(map[string]string)}
+	fileHosts := &FileHosts{
+		file:  hs.HostsFile,
+		hosts: make(map[string]string),
+	}
 
 	var redisHosts *RedisHosts
 	if hs.RedisEnable {
 		rc := &redis.Client{Addr: rs.Addr(), Db: rs.DB, Password: rs.Password}
-		redisHosts = &RedisHosts{rc, hs.RedisKey, make(map[string]string)}
+		redisHosts = &RedisHosts{
+			redis: rc,
+			key:   hs.RedisKey,
+			hosts: make(map[string]string),
+		}
 	}
 
 	hosts := Hosts{fileHosts, redisHosts}
@@ -72,7 +80,7 @@ func (h *Hosts) Get(domain string, family int) ([]net.IP, bool) {
 Update hosts records from /etc/hosts file and redis per minute
 */
 func (h *Hosts) refresh() {
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Second * 5)
 	go func() {
 		for {
 			h.fileHosts.Refresh()
@@ -84,19 +92,18 @@ func (h *Hosts) refresh() {
 	}()
 }
 
-type BaseHosts struct {
-	hosts map[string]string
-}
-
 type RedisHosts struct {
 	redis *redis.Client
 	key   string
 	hosts map[string]string
+	mu    sync.RWMutex
 }
 
 func (r *RedisHosts) Get(domain string) ([]string, bool) {
 	domain = strings.ToLower(domain)
+	r.mu.RLock()
 	ip, ok := r.hosts[domain]
+	r.mu.RUnlock()
 	if ok {
 		return strings.Split(ip, ","), true
 	}
@@ -113,10 +120,15 @@ func (r *RedisHosts) Get(domain string) ([]string, bool) {
 }
 
 func (r *RedisHosts) Set(domain, ip string) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	return r.redis.Hset(r.key, strings.ToLower(domain), []byte(ip))
 }
 
 func (r *RedisHosts) Refresh() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.clear()
 	err := r.redis.Hgetall(r.key, r.hosts)
 	if err != nil {
 		logger.Warn("Update hosts records from redis failed %s", err)
@@ -125,14 +137,21 @@ func (r *RedisHosts) Refresh() {
 	}
 }
 
+func (r *RedisHosts) clear() {
+	r.hosts = make(map[string]string)
+}
+
 type FileHosts struct {
 	file  string
 	hosts map[string]string
+	mu    sync.RWMutex
 }
 
 func (f *FileHosts) Get(domain string) ([]string, bool) {
 	domain = strings.ToLower(domain)
+	f.mu.RLock()
 	ip, ok := f.hosts[domain]
+	f.mu.RUnlock()
 	if !ok {
 		return nil, false
 	}
@@ -146,6 +165,9 @@ func (f *FileHosts) Refresh() {
 		return
 	}
 	defer buf.Close()
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
 	f.clear()
 
