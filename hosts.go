@@ -13,8 +13,9 @@ import (
 )
 
 type Hosts struct {
-	fileHosts  *FileHosts
-	redisHosts *RedisHosts
+	fileHosts       *FileHosts
+	redisHosts      *RedisHosts
+	refreshInterval time.Duration
 }
 
 func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
@@ -33,7 +34,7 @@ func NewHosts(hs HostsSettings, rs RedisSettings) Hosts {
 		}
 	}
 
-	hosts := Hosts{fileHosts, redisHosts}
+	hosts := Hosts{fileHosts, redisHosts, time.Second * time.Duration(hs.RefreshInterval)}
 	hosts.refresh()
 	return hosts
 
@@ -80,7 +81,7 @@ func (h *Hosts) Get(domain string, family int) ([]net.IP, bool) {
 Update hosts records from /etc/hosts file and redis per minute
 */
 func (h *Hosts) refresh() {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(h.refreshInterval)
 	go func() {
 		for {
 			h.fileHosts.Refresh()
