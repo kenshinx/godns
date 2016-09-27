@@ -4,7 +4,7 @@ GODNS
 A simple and fast dns cache server written by go.
 
 
-Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html) ,but support some difference features:
+Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html), but supports some difference features:
 
 
 * Keep hosts records in redis and the local file /etc/hosts  
