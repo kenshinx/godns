@@ -27,6 +27,7 @@ type Settings struct {
 	Server       DNSServerSettings `toml:"server"`
 	ResolvConfig ResolvSettings    `toml:"resolv"`
 	Redis        RedisSettings     `toml:"redis"`
+	Memcache     MemcacheSettings  `toml:"memcache"`
 	Log          LogSettings       `toml:"log"`
 	Cache        CacheSettings     `toml:"cache"`
 	Hosts        HostsSettings     `toml:"hosts"`
@@ -48,6 +49,10 @@ type RedisSettings struct {
 	Port     int
 	DB       int
 	Password string
+}
+
+type MemcacheSettings struct {
+	Servers []string
 }
 
 func (s RedisSettings) Addr() string {
