@@ -31,6 +31,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		Net:          net,
 		ReadTimeout:  r.Timeout(),
 		WriteTimeout: r.Timeout(),
+		UDPSize:      4096,
 	}
 
 	qname := req.Question[0].Name
