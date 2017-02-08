@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -93,9 +94,9 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 func (r *Resolver) Nameservers() (ns []string) {
 	for _, server := range r.config.Servers {
 		if i := strings.IndexByte(server, '#'); i > 0 {
-			server = server[:i] + ":" + server[i+1:]
+			server = net.JoinHostPort(server[:i], server[i+1:])
 		} else {
-			server = server + ":" + r.config.Port
+			server = net.JoinHostPort(server, r.config.Port)
 		}
 		ns = append(ns, server)
 	}

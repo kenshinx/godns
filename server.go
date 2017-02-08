@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"strconv"
 	"time"
 
@@ -15,11 +16,10 @@ type Server struct {
 }
 
 func (s *Server) Addr() string {
-	return s.host + ":" + strconv.Itoa(s.port)
+	return net.JoinHostPort(s.host, strconv.Itoa(s.port))
 }
 
 func (s *Server) Run() {
-
 	Handler := NewHandler()
 
 	tcpHandler := dns.NewServeMux()
