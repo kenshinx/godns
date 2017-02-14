@@ -37,6 +37,7 @@ type ResolvSettings struct {
 	ResolvFile string `toml:"resolv-file"`
 	Timeout    int
 	Interval   int
+	SetEDNS0   bool
 }
 
 type DNSServerSettings struct {

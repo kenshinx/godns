@@ -34,6 +34,10 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		WriteTimeout: r.Timeout(),
 	}
 
+	if net == "udp" && settings.ResolvConfig.SetEDNS0 {
+		req = req.SetEdns0(65535, true)
+	}
+
 	qname := req.Question[0].Name
 
 	res := make(chan *dns.Msg, 1)
