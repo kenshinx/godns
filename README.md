@@ -94,8 +94,8 @@ More than that , `*.` wildcard is supported additional.
 __redis hosts__ 
 
 This is a special requirment in our system. Must maintain a global hosts configuration, 
-and support update the hosts record from other remote server.
-so "redis-hosts" will be supported, and will query the redis db when each dns request is reached.  
+and support update the host records from other remote server.
+Therefore, while "redis-hosts" be enabled, will query the redis db when each dns request is reached.  
 
 The hosts record is organized with redis hash map. and the key of the map is configured.
 
@@ -110,17 +110,11 @@ _Insert hosts records into redis_
 redis > hset godns:hosts www.test.com 1.1.1.1
 ```
 
-Compared with file-backend records, redis-backend hosts support two advanced records formatting.
+Compared with file-backend records, redis-backend hosts support multiple A entries.
 
-1. `*.` wildcard
-	```
-	redis > hset godns:hosts *.example.com 127.0.0.1
-	```
-
-2. Multiple A entries, delimited by commas
-	```
-	redis > hset godns:hosts www.test.com 1.1.1.1,2.2.2.2
-	```
+```
+redis > hset godns:hosts www.test.com 1.1.1.1,2.2.2.2
+```
 
 
 ## Benchmark
