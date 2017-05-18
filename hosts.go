@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hoisie/redis"
+	"golang.org/x/net/publicsuffix"
 )
 
 type Hosts struct {
@@ -149,14 +150,32 @@ type FileHosts struct {
 }
 
 func (f *FileHosts) Get(domain string) ([]string, bool) {
-	domain = strings.ToLower(domain)
 	f.mu.RLock()
+	defer f.mu.RUnlock()
+	domain = strings.ToLower(domain)
 	ip, ok := f.hosts[domain]
-	f.mu.RUnlock()
-	if !ok {
+	if ok {
+		return []string{ip}, true
+	}
+
+	sld, err := publicsuffix.EffectiveTLDPlusOne(domain)
+	if err != nil {
 		return nil, false
 	}
-	return []string{ip}, true
+
+	for host, ip := range f.hosts {
+		if strings.HasPrefix(host, "*.") {
+			old, err := publicsuffix.EffectiveTLDPlusOne(host)
+			if err != nil {
+				continue
+			}
+			if sld == old {
+				return []string{ip}, true
+			}
+		}
+	}
+
+	return nil, false
 }
 
 func (f *FileHosts) Refresh() {
