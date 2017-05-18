@@ -104,16 +104,25 @@ type RedisHosts struct {
 func (r *RedisHosts) Get(domain string) ([]string, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
 	domain = strings.ToLower(domain)
 	ip, ok := r.hosts[domain]
 	if ok {
 		return strings.Split(ip, ","), true
 	}
 
+	sld, err := publicsuffix.EffectiveTLDPlusOne(domain)
+	if err != nil {
+		return nil, false
+	}
+
 	for host, ip := range r.hosts {
 		if strings.HasPrefix(host, "*.") {
-			upperLevelDomain := strings.Split(host, "*.")[1]
-			if strings.HasSuffix(domain, upperLevelDomain) {
+			old, err := publicsuffix.EffectiveTLDPlusOne(host)
+			if err != nil {
+				continue
+			}
+			if sld == old {
 				return strings.Split(ip, ","), true
 			}
 		}
