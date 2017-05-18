@@ -101,10 +101,10 @@ type RedisHosts struct {
 }
 
 func (r *RedisHosts) Get(domain string) ([]string, bool) {
-	domain = strings.ToLower(domain)
 	r.mu.RLock()
+	defer r.mu.RUnlock()
+	domain = strings.ToLower(domain)
 	ip, ok := r.hosts[domain]
-	r.mu.RUnlock()
 	if ok {
 		return strings.Split(ip, ","), true
 	}
