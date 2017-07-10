@@ -205,29 +205,36 @@ func (f *FileHosts) Refresh() {
 
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
+		line = strings.Replace(line, "\t", " ", -1)
 
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
 
 		sli := strings.Split(line, " ")
-		if len(sli) == 1 {
-			sli = strings.Split(line, "\t")
-		}
 
 		if len(sli) < 2 {
 			continue
 		}
 
-		domain := sli[len(sli)-1]
 		ip := sli[0]
-		if !f.isDomain(domain) || !f.isIP(ip) {
+		if !f.isIP(ip) {
 			continue
 		}
 
-		f.hosts[strings.ToLower(domain)] = ip
+		// Would have multiple columns of domain in line.
+		// Such as "127.0.0.1  localhost localhost.domain" on linux.
+		// The domains may not strict standard, like "local" so don't check with f.isDomain(domain).
+		for i := 1; i <= len(sli)-1; i++ {
+			domain := strings.TrimSpace(sli[i])
+			if domain == "" {
+				continue
+			}
+
+			f.hosts[strings.ToLower(domain)] = ip
+		}
 	}
-	logger.Debug("update hosts records from %s", f.file)
+	logger.Debug("update hosts records from %s, total %d records.", f.file, len(f.hosts))
 }
 
 func (f *FileHosts) clear() {
