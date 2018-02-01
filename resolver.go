@@ -62,11 +62,7 @@ func NewResolver(c ResolvSettings) *Resolver {
 	return r
 }
 
-func (r *Resolver) ReadServerListFile(file string) {
-	buf, err := os.Open(file)
-	if err != nil {
-		panic("Can't open " + file)
-	}
+func (r *Resolver) parseServerListFile(buf *os.File) {
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -88,6 +84,7 @@ func (r *Resolver) ReadServerListFile(file string) {
 		case 3:
 			domain := tokens[1]
 			ip := tokens[2]
+
 			if !isDomain(domain) || !isIP(ip) {
 				continue
 			}
@@ -114,6 +111,18 @@ func (r *Resolver) ReadServerListFile(file string) {
 		}
 	}
 
+}
+
+func (r *Resolver) ReadServerListFile(path string) {
+	files := strings.Split(path, ";")
+	for _, file := range files {
+		buf, err := os.Open(file)
+		if err != nil {
+			panic("Can't open " + file)
+		}
+		defer buf.Close()
+		r.parseServerListFile(buf)
+	}
 }
 
 // Lookup will ask each nameserver in top-to-bottom fashion, starting a new request
