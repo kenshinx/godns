@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -37,7 +38,6 @@ func NewResolver(c ResolvSettings) *Resolver {
 
 	if len(c.ServerListFile) > 0 {
 		r.ReadServerListFile(c.ServerListFile)
-		// Debug("%v", r.servers)
 	}
 
 	if len(c.ResolvFile) > 0 {
@@ -48,7 +48,7 @@ func NewResolver(c ResolvSettings) *Resolver {
 			panic(err)
 		}
 		for _, server := range clientConfig.Servers {
-			nameserver := server + ":" + clientConfig.Port
+			nameserver := net.JoinHostPort(server, clientConfig.Port)
 			r.servers = append(r.servers, nameserver)
 		}
 	}
@@ -104,8 +104,7 @@ func (r *Resolver) ReadServerListFile(file string) {
 				}
 				port = srv_port[1]
 			}
-			r.servers = append(r.servers, ip+":"+port)
-
+			r.servers = append(r.servers, net.JoinHostPort(ip, port))
 		}
 	}
 
