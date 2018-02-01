@@ -34,10 +34,11 @@ type Settings struct {
 }
 
 type ResolvSettings struct {
-	ResolvFile string `toml:"resolv-file"`
-	Timeout    int
-	Interval   int
-	SetEDNS0   bool
+	Timeout        int
+	Interval       int
+	SetEDNS0       bool
+	ServerListFile string `toml:"server-list-file"`
+	ResolvFile     string `toml:"resolv-file"`
 }
 
 type DNSServerSettings struct {
@@ -93,7 +94,7 @@ func init() {
 
 	var configFile string
 
-	flag.StringVar(&configFile, "c", "godns.conf", "Look for godns toml-formatting config file in this directory")
+	flag.StringVar(&configFile, "c", "./etc/godns.conf", "Look for godns toml-formatting config file in this directory")
 	flag.Parse()
 
 	if _, err := toml.DecodeFile(configFile, &settings); err != nil {

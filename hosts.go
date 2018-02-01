@@ -218,7 +218,7 @@ func (f *FileHosts) Refresh() {
 		}
 
 		ip := sli[0]
-		if !f.isIP(ip) {
+		if !isIP(ip) {
 			continue
 		}
 
@@ -241,14 +241,14 @@ func (f *FileHosts) clear() {
 	f.hosts = make(map[string]string)
 }
 
-func (f *FileHosts) isDomain(domain string) bool {
-	if f.isIP(domain) {
+func isDomain(domain string) bool {
+	if isIP(domain) {
 		return false
 	}
 	match, _ := regexp.MatchString(`^([a-zA-Z0-9\*]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$`, domain)
 	return match
 }
 
-func (f *FileHosts) isIP(ip string) bool {
+func isIP(ip string) bool {
 	return (net.ParseIP(ip) != nil)
 }

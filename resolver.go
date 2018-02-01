@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"net"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +23,92 @@ func (e ResolvError) Error() string {
 }
 
 type Resolver struct {
-	config *dns.ClientConfig
+	servers       []string
+	domain_server *suffixTreeNode
+	config        *ResolvSettings
+}
+
+func NewResolver(c ResolvSettings) *Resolver {
+	r := &Resolver{
+		servers:       []string{},
+		domain_server: newSuffixTreeRoot(),
+		config:        &c,
+	}
+
+	if len(c.ServerListFile) > 0 {
+		r.ReadServerListFile(c.ServerListFile)
+		// Debug("%v", r.servers)
+	}
+
+	if len(c.ResolvFile) > 0 {
+		clientConfig, err := dns.ClientConfigFromFile(c.ResolvFile)
+		if err != nil {
+			logger.Error(":%s is not a valid resolv.conf file\n", c.ResolvFile)
+			logger.Error("%s", err)
+			panic(err)
+		}
+		for _, server := range clientConfig.Servers {
+			nameserver := server + ":" + clientConfig.Port
+			r.servers = append(r.servers, nameserver)
+		}
+	}
+
+	return r
+}
+
+func (r *Resolver) ReadServerListFile(file string) {
+	buf, err := os.Open(file)
+	if err != nil {
+		panic("Can't open " + file)
+	}
+	scanner := bufio.NewScanner(buf)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+
+		if !strings.HasPrefix(line, "server") {
+			continue
+		}
+
+		sli := strings.Split(line, "=")
+		if len(sli) != 2 {
+			continue
+		}
+
+		line = strings.TrimSpace(sli[1])
+
+		tokens := strings.Split(line, "/")
+		switch len(tokens) {
+		case 3:
+			domain := tokens[1]
+			ip := tokens[2]
+			if !isDomain(domain) || !isIP(ip) {
+				continue
+			}
+			r.domain_server.sinsert(strings.Split(domain, "."), ip)
+		case 1:
+			srv_port := strings.Split(line, "#")
+			if len(srv_port) > 2 {
+				continue
+			}
+
+			ip := ""
+			if ip = srv_port[0]; !isIP(ip) {
+				continue
+			}
+
+			port := "53"
+			if len(srv_port) == 2 {
+				if _, err := strconv.Atoi(srv_port[1]); err != nil {
+					continue
+				}
+				port = srv_port[1]
+			}
+			r.servers = append(r.servers, ip+":"+port)
+
+		}
+	}
+
 }
 
 // Lookup will ask each nameserver in top-to-bottom fashion, starting a new request
@@ -60,7 +147,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 				return
 			}
 		} else {
-			logger.Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
+			logger.Debug("%s resolv on %s (%s) ttl: %v", UnFqdn(qname), nameserver, net, rtt)
 		}
 		select {
 		case res <- r:
@@ -71,12 +158,14 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 	ticker := time.NewTicker(time.Duration(settings.ResolvConfig.Interval) * time.Millisecond)
 	defer ticker.Stop()
 	// Start lookup on each nameserver top-down, in every second
-	for _, nameserver := range r.Nameservers() {
+	nameservers := r.Nameservers(qname)
+	for _, nameserver := range nameservers {
 		wg.Add(1)
 		go L(nameserver)
 		// but exit early, if we have an answer
 		select {
 		case r := <-res:
+			// logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), nameserver, rtt)
 			return r, nil
 		case <-ticker.C:
 			continue
@@ -86,25 +175,32 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 	wg.Wait()
 	select {
 	case r := <-res:
+		// logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), nameserver, rtt)
 		return r, nil
 	default:
-		return nil, ResolvError{qname, net, r.Nameservers()}
+		return nil, ResolvError{qname, net, nameservers}
 	}
-
 }
 
 // Namservers return the array of nameservers, with port number appended.
 // '#' in the name is treated as port separator, as with dnsmasq.
-func (r *Resolver) Nameservers() (ns []string) {
-	for _, server := range r.config.Servers {
-		if i := strings.IndexByte(server, '#'); i > 0 {
-			server = net.JoinHostPort(server[:i], server[i+1:])
-		} else {
-			server = net.JoinHostPort(server, r.config.Port)
-		}
-		ns = append(ns, server)
+
+func (r *Resolver) Nameservers(qname string) []string {
+	queryKeys := strings.Split(qname, ".")
+	queryKeys = queryKeys[:len(queryKeys)-1] // ignore last '.'
+
+	ns := []string{}
+	if v, found := r.domain_server.search(queryKeys); found {
+		logger.Debug("found upstream: %v", v)
+		server := v
+		nameserver := server + ":53"
+		ns = append(ns, nameserver)
 	}
-	return
+
+	for _, nameserver := range r.servers {
+		ns = append(ns, nameserver)
+	}
+	return ns
 }
 
 func (r *Resolver) Timeout() time.Duration {

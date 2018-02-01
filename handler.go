@@ -32,21 +32,12 @@ type GODNSHandler struct {
 func NewHandler() *GODNSHandler {
 
 	var (
-		clientConfig    *dns.ClientConfig
 		cacheConfig     CacheSettings
 		resolver        *Resolver
 		cache, negCache Cache
 	)
 
-	resolvConfig := settings.ResolvConfig
-	clientConfig, err := dns.ClientConfigFromFile(resolvConfig.ResolvFile)
-	if err != nil {
-		logger.Warn(":%s is not a valid resolv.conf file\n", resolvConfig.ResolvFile)
-		logger.Error(err.Error())
-		panic(err)
-	}
-	clientConfig.Timeout = resolvConfig.Timeout
-	resolver = &Resolver{clientConfig}
+	resolver = NewResolver(settings.ResolvConfig)
 
 	cacheConfig = settings.Cache
 	switch cacheConfig.Backend {
