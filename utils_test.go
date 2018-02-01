@@ -8,26 +8,24 @@ import (
 
 func TestHostDomainAndIP(t *testing.T) {
 	Convey("Test Host File Domain and IP regex", t, func() {
-		f := &FileHosts{}
-
 		Convey("1.1.1.1 should be IP and not domain", func() {
-			So(f.isIP("1.1.1.1"), ShouldEqual, true)
-			So(f.isDomain("1.1.1.1"), ShouldEqual, false)
+			So(isIP("1.1.1.1"), ShouldEqual, true)
+			So(isDomain("1.1.1.1"), ShouldEqual, false)
 		})
 
 		Convey("2001:470:20::2 should be IP and not domain", func() {
-			So(f.isIP("2001:470:20::2"), ShouldEqual, true)
-			So(f.isDomain("2001:470:20::2"), ShouldEqual, false)
+			So(isIP("2001:470:20::2"), ShouldEqual, true)
+			So(isDomain("2001:470:20::2"), ShouldEqual, false)
 		})
 
 		Convey("`host` should not be domain and not IP", func() {
-			So(f.isDomain("host"), ShouldEqual, false)
-			So(f.isIP("host"), ShouldEqual, false)
+			So(isDomain("host"), ShouldEqual, false)
+			So(isIP("host"), ShouldEqual, false)
 		})
 
 		Convey("`123.test` should be domain and not IP", func() {
-			So(f.isDomain("123.test"), ShouldEqual, true)
-			So(f.isIP("123.test"), ShouldEqual, false)
+			So(isDomain("123.test"), ShouldEqual, true)
+			So(isIP("123.test"), ShouldEqual, false)
 		})
 
 	})

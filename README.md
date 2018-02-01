@@ -27,13 +27,12 @@ Similar to [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html), but support
 
 3. Running  
 
-		$ sudo ./godns -c godns.conf
+		$ sudo ./godns -c ./etc/godns.conf
 
 4. Test
         
         $ dig www.github.com @127.0.0.1
 
-More details about how to install and running godns can reference my [blog (Chinese)](http://blog.kenshinx.me/blog/compile-godns/)
 
 
 ## Use godns 
@@ -57,6 +56,12 @@ resolv-file = "/etc/resolv.conf"
 ```
 If multiple `namerservers` are set in resolv.conf, the upsteam server will try in a top to bottom order
 
+
+#### server-list-file
+Domain-specific nameservers configuration, formatting keep compatible with Dnsmasq.
+>server=/google.com/8.8.8.8
+
+More cases please refererence [dnsmasq-china-list](https://github.com/felixonmars/dnsmasq-china-list)
 
 
 #### cache

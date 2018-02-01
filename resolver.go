@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,8 +23,106 @@ func (e ResolvError) Error() string {
 	return errmsg
 }
 
+type RResp struct {
+	msg        *dns.Msg
+	nameserver string
+	rtt        time.Duration
+}
+
 type Resolver struct {
-	config *dns.ClientConfig
+	servers       []string
+	domain_server *suffixTreeNode
+	config        *ResolvSettings
+}
+
+func NewResolver(c ResolvSettings) *Resolver {
+	r := &Resolver{
+		servers:       []string{},
+		domain_server: newSuffixTreeRoot(),
+		config:        &c,
+	}
+
+	if len(c.ServerListFile) > 0 {
+		r.ReadServerListFile(c.ServerListFile)
+	}
+
+	if len(c.ResolvFile) > 0 {
+		clientConfig, err := dns.ClientConfigFromFile(c.ResolvFile)
+		if err != nil {
+			logger.Error(":%s is not a valid resolv.conf file\n", c.ResolvFile)
+			logger.Error("%s", err)
+			panic(err)
+		}
+		for _, server := range clientConfig.Servers {
+			nameserver := net.JoinHostPort(server, clientConfig.Port)
+			r.servers = append(r.servers, nameserver)
+		}
+	}
+
+	return r
+}
+
+func (r *Resolver) parseServerListFile(buf *os.File) {
+	scanner := bufio.NewScanner(buf)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+
+		if !strings.HasPrefix(line, "server") {
+			continue
+		}
+
+		sli := strings.Split(line, "=")
+		if len(sli) != 2 {
+			continue
+		}
+
+		line = strings.TrimSpace(sli[1])
+
+		tokens := strings.Split(line, "/")
+		switch len(tokens) {
+		case 3:
+			domain := tokens[1]
+			ip := tokens[2]
+
+			if !isDomain(domain) || !isIP(ip) {
+				continue
+			}
+			r.domain_server.sinsert(strings.Split(domain, "."), ip)
+		case 1:
+			srv_port := strings.Split(line, "#")
+			if len(srv_port) > 2 {
+				continue
+			}
+
+			ip := ""
+			if ip = srv_port[0]; !isIP(ip) {
+				continue
+			}
+
+			port := "53"
+			if len(srv_port) == 2 {
+				if _, err := strconv.Atoi(srv_port[1]); err != nil {
+					continue
+				}
+				port = srv_port[1]
+			}
+			r.servers = append(r.servers, net.JoinHostPort(ip, port))
+		}
+	}
+
+}
+
+func (r *Resolver) ReadServerListFile(path string) {
+	files := strings.Split(path, ";")
+	for _, file := range files {
+		buf, err := os.Open(file)
+		if err != nil {
+			panic("Can't open " + file)
+		}
+		defer buf.Close()
+		r.parseServerListFile(buf)
+	}
 }
 
 // Lookup will ask each nameserver in top-to-bottom fashion, starting a new request
@@ -40,7 +141,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 
 	qname := req.Question[0].Name
 
-	res := make(chan *dns.Msg, 1)
+	res := make(chan *RResp, 1)
 	var wg sync.WaitGroup
 	L := func(nameserver string) {
 		defer wg.Done()
@@ -59,11 +160,10 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 			if r.Rcode == dns.RcodeServerFailure {
 				return
 			}
-		} else {
-			logger.Debug("%s resolv on %s (%s) ttl: %d", UnFqdn(qname), nameserver, net, rtt)
 		}
+		re := &RResp{r, nameserver, rtt}
 		select {
-		case res <- r:
+		case res <- re:
 		default:
 		}
 	}
@@ -71,13 +171,15 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 	ticker := time.NewTicker(time.Duration(settings.ResolvConfig.Interval) * time.Millisecond)
 	defer ticker.Stop()
 	// Start lookup on each nameserver top-down, in every second
-	for _, nameserver := range r.Nameservers() {
+	nameservers := r.Nameservers(qname)
+	for _, nameserver := range nameservers {
 		wg.Add(1)
 		go L(nameserver)
 		// but exit early, if we have an answer
 		select {
-		case r := <-res:
-			return r, nil
+		case re := <-res:
+			logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
+			return re.msg, nil
 		case <-ticker.C:
 			continue
 		}
@@ -85,26 +187,35 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 	// wait for all the namservers to finish
 	wg.Wait()
 	select {
-	case r := <-res:
-		return r, nil
+	case re := <-res:
+		logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
+		return re.msg, nil
 	default:
-		return nil, ResolvError{qname, net, r.Nameservers()}
+		return nil, ResolvError{qname, net, nameservers}
 	}
-
 }
 
 // Namservers return the array of nameservers, with port number appended.
 // '#' in the name is treated as port separator, as with dnsmasq.
-func (r *Resolver) Nameservers() (ns []string) {
-	for _, server := range r.config.Servers {
-		if i := strings.IndexByte(server, '#'); i > 0 {
-			server = net.JoinHostPort(server[:i], server[i+1:])
-		} else {
-			server = net.JoinHostPort(server, r.config.Port)
-		}
-		ns = append(ns, server)
+
+func (r *Resolver) Nameservers(qname string) []string {
+	queryKeys := strings.Split(qname, ".")
+	queryKeys = queryKeys[:len(queryKeys)-1] // ignore last '.'
+
+	ns := []string{}
+	if v, found := r.domain_server.search(queryKeys); found {
+		logger.Debug("%s be found in domain server list, upstream: %v", qname, v)
+		server := v
+		nameserver := net.JoinHostPort(server, "53")
+		ns = append(ns, nameserver)
+		//Ensure query the specific upstream nameserver in async Lookup() function.
+		return ns
 	}
-	return
+
+	for _, nameserver := range r.servers {
+		ns = append(ns, nameserver)
+	}
+	return ns
 }
 
 func (r *Resolver) Timeout() time.Duration {
