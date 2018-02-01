@@ -33,6 +33,10 @@ func Test_Suffix_Tree(t *testing.T) {
 		So(found, ShouldEqual, true)
 		So(v, ShouldEqual, "8.8.8.8")
 
+		v, found = root.search(strings.Split("www.google.com", "."))
+		So(found, ShouldEqual, true)
+		So(v, ShouldEqual, "8.8.8.8")
+
 		v, found = root.search(strings.Split("scholar.google.com", "."))
 		So(found, ShouldEqual, true)
 		So(v, ShouldEqual, "208.67.222.222")
