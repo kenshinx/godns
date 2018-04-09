@@ -140,7 +140,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 
 	qname := req.Question[0].Name
 
-	res := make(chan *RResp, 1)
+	res := make(chan *RResp, 100)
 	L := func(nameserver string) {
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
