@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -142,9 +141,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 	qname := req.Question[0].Name
 
 	res := make(chan *RResp, 1)
-	var wg sync.WaitGroup
 	L := func(nameserver string) {
-		defer wg.Done()
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
 			logger.Warn("%s socket error on %s", qname, nameserver)
@@ -168,31 +165,20 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		}
 	}
 
-	ticker := time.NewTicker(time.Duration(settings.ResolvConfig.Interval) * time.Millisecond)
-	defer ticker.Stop()
 	// Start lookup on each nameserver top-down, in every second
 	nameservers := r.Nameservers(qname)
 	for _, nameserver := range nameservers {
-		wg.Add(1)
 		go L(nameserver)
-		// but exit early, if we have an answer
-		select {
-		case re := <-res:
-			logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
-			return re.msg, nil
-		case <-ticker.C:
-			continue
-		}
 	}
-	// wait for all the namservers to finish
-	wg.Wait()
-	select {
-	case re := <-res:
-		logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
-		return re.msg, nil
-	default:
+	time.AfterFunc(time.Duration(settings.ResolvConfig.Interval)*time.Millisecond, func() {
+		res <- nil
+	})
+	re := <-res
+	if re == nil {
 		return nil, ResolvError{qname, net, nameservers}
 	}
+	logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
+	return re.msg, nil
 }
 
 // Namservers return the array of nameservers, with port number appended.
