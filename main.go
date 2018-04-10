@@ -32,7 +32,7 @@ func main() {
 		go profileMEM()
 	}
 
-	sig := make(chan os.Signal)
+	sig := make(chan os.Signal, 10)
 	signal.Notify(sig, os.Interrupt)
 
 forever:

@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -129,11 +129,6 @@ func (r *Resolver) ReadServerListFile(path string) {
 // in every second, and return as early as possbile (have an answer).
 // It returns an error if no request has succeeded.
 func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error) {
-	c := &dns.Client{
-		Net:          net,
-		ReadTimeout:  r.Timeout(),
-		WriteTimeout: r.Timeout(),
-	}
 
 	if net == "udp" && settings.ResolvConfig.SetEDNS0 {
 		req = req.SetEdns0(65535, true)
@@ -141,11 +136,16 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 
 	qname := req.Question[0].Name
 
-	res := make(chan *RResp, 1)
-	var wg sync.WaitGroup
+	res := make(chan *RResp, 100)
+	ctxt, cf := context.WithTimeout(context.TODO(), time.Duration(settings.ResolvConfig.Interval)*time.Millisecond)
+	defer cf()
 	L := func(nameserver string) {
-		defer wg.Done()
-		r, rtt, err := c.Exchange(req, nameserver)
+		c := &dns.Client{
+			Net:          net,
+			ReadTimeout:  r.Timeout(),
+			WriteTimeout: r.Timeout(),
+		}
+		r, rtt, err := c.ExchangeContext(ctxt, req, nameserver)
 		if err != nil {
 			logger.Warn("%s socket error on %s", qname, nameserver)
 			logger.Warn("error:%s", err.Error())
@@ -156,7 +156,7 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		// that it has been verified no such domain existas and ask other resolvers
 		// would make no sense. See more about #20
 		if r != nil && r.Rcode != dns.RcodeSuccess {
-			logger.Warn("%s failed to get an valid answer on %s", qname, nameserver)
+			logger.Warn("%s failed to get an valid answer on %s\n%+v", qname, nameserver, r)
 			if r.Rcode == dns.RcodeServerFailure {
 				return
 			}
@@ -168,37 +168,26 @@ func (r *Resolver) Lookup(net string, req *dns.Msg) (message *dns.Msg, err error
 		}
 	}
 
-	ticker := time.NewTicker(time.Duration(settings.ResolvConfig.Interval) * time.Millisecond)
-	defer ticker.Stop()
 	// Start lookup on each nameserver top-down, in every second
 	nameservers := r.Nameservers(qname)
-	for _, nameserver := range nameservers {
-		wg.Add(1)
+	for _, nameserver := range *nameservers {
 		go L(nameserver)
-		// but exit early, if we have an answer
-		select {
-		case re := <-res:
-			logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
-			return re.msg, nil
-		case <-ticker.C:
-			continue
-		}
 	}
-	// wait for all the namservers to finish
-	wg.Wait()
-	select {
-	case re := <-res:
-		logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
-		return re.msg, nil
-	default:
-		return nil, ResolvError{qname, net, nameservers}
+	time.AfterFunc(time.Duration(settings.ResolvConfig.Interval)*time.Millisecond, func() {
+		res <- nil
+	})
+	re := <-res
+	if re == nil {
+		return nil, ResolvError{qname, net, *nameservers}
 	}
+	logger.Debug("%s resolv on %s rtt: %v", UnFqdn(qname), re.nameserver, re.rtt)
+	return re.msg, nil
 }
 
 // Namservers return the array of nameservers, with port number appended.
 // '#' in the name is treated as port separator, as with dnsmasq.
 
-func (r *Resolver) Nameservers(qname string) []string {
+func (r *Resolver) Nameservers(qname string) *[]string {
 	queryKeys := strings.Split(qname, ".")
 	queryKeys = queryKeys[:len(queryKeys)-1] // ignore last '.'
 
@@ -209,13 +198,13 @@ func (r *Resolver) Nameservers(qname string) []string {
 		nameserver := net.JoinHostPort(server, "53")
 		ns = append(ns, nameserver)
 		//Ensure query the specific upstream nameserver in async Lookup() function.
-		return ns
+		return &ns
 	}
 
 	for _, nameserver := range r.servers {
 		ns = append(ns, nameserver)
 	}
-	return ns
+	return &ns
 }
 
 func (r *Resolver) Timeout() time.Duration {

@@ -154,17 +154,25 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			return
 		}
 	}
-
-	mesg, err := h.resolver.Lookup(Net, req)
-
-	if err != nil {
-		logger.Warn("Resolve query error %s", err)
-		dns.HandleFailed(w, req)
-
-		// cache the failure, too!
-		if err = h.negCache.Set(key, nil); err != nil {
-			logger.Warn("Set %s negative cache failed: %v", Q.String(), err)
+	var mesg *dns.Msg
+	var err error
+	var ok bool
+	for i := 0; i < 5; i++ {
+		mesg, err = h.resolver.Lookup(Net, req)
+		if err == nil {
+			ok = true
+			break
+		} else {
+			logger.Warn("Resolve query error %s", err)
 		}
+	}
+
+	if !ok {
+		dns.HandleFailed(w, req)
+		// cache the failure, too!
+		//if err = h.negCache.Set(key, nil); err != nil {
+		//	logger.Warn("Set %s negative cache failed: %v", Q.String(), err)
+		//}
 		return
 	}
 
