@@ -60,13 +60,12 @@ func NewHandler() *GODNSHandler {
 			settings.Memcache.Servers,
 			int32(cacheConfig.Expire/2))
 	case "redis":
-		// cache = &MemoryCache{
-		// 	Backend:    make(map[string]*dns.Msg),
-		//  Expire:   time.Duration(cacheConfig.Expire) * time.Second,
-		// 	Serializer: new(JsonSerializer),
-		// 	Maxcount:   cacheConfig.Maxcount,
-		// }
-		panic("Redis cache backend not implement yet")
+		cache = NewRedisCache(
+			settings.Redis,
+			int64(cacheConfig.Expire))
+		negCache = NewRedisCache(
+			settings.Redis,
+			int64(cacheConfig.Expire/2))
 	default:
 		logger.Error("Invalid cache backend %s", cacheConfig.Backend)
 		panic("Invalid cache backend")
