@@ -64,6 +64,33 @@ Domain-specific nameservers configuration, formatting keep compatible with Dnsma
 More cases please refererence [dnsmasq-china-list](https://github.com/felixonmars/dnsmasq-china-list)
 
 
+#### audit
+
+Only redis storage backend is currently implemented.
+
+Audit logs are in format:
+
+```
+{ "remoteaddr": "127.0.0.1", "domain": "domain.com", "qtype": "A", "timestamp": "2019-04-15T12:16:21.875492605Z" }
+```
+
+Backend uses lists to store logs in redis.
+
+Logs grouped by hour.
+
+Redis keys have format:
+
+```
+audit-YYYY-MM-DDTHH:00
+```
+
+Example request to get audit logs from redis:
+
+```
+LRANGE audit-2019-04-15T00:00 0 -1
+```
+
+
 #### cache
 
 Only the local memory storage backend is currently implemented.  The redis backend is in the todo list

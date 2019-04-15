@@ -31,6 +31,7 @@ type Settings struct {
 	Log          LogSettings       `toml:"log"`
 	Cache        CacheSettings     `toml:"cache"`
 	Hosts        HostsSettings     `toml:"hosts"`
+	Audit        AuditSettings     `toml:"audit"`
 }
 
 type ResolvSettings struct {
@@ -65,6 +66,11 @@ type LogSettings struct {
 	Stdout bool
 	File   string
 	Level  string
+}
+
+type AuditSettings struct {
+	Expire  int64
+	Backend string
 }
 
 func (ls LogSettings) LogLevel() int {
