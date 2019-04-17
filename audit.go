@@ -1,11 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/hoisie/redis"
+	_ "github.com/lib/pq"
 )
 
 const AUDIT_LOG_OUTPUT_BUFFER = 1024
@@ -74,4 +76,77 @@ func (rl *RedisAuditLogger) Run() {
 
 func (rl *RedisAuditLogger) Write(mesg *AuditMesg) {
 	rl.mesgs <- mesg
+}
+
+type PostgresqlAuditLogger struct {
+	backend *sql.DB
+	mesgs   chan *AuditMesg
+	expire  int64
+}
+
+func NewPostgresqlAuditLogger(ps PostgresqlSettings, expire int64) AuditLogger {
+	connStr := fmt.Sprintf(`
+                host=%s port=%d
+                user=%s password=%s
+                dbname=%s sslmode=%s
+                sslcert=%s sslkey=%s
+                sslrootcert=%s
+                `,
+		ps.Host, ps.Port,
+		ps.User, ps.Password,
+		ps.DB, ps.Sslmode,
+		ps.Sslcert, ps.Sslkey,
+		ps.Sslrootcert,
+	)
+	pc, err := sql.Open("postgres", connStr)
+	if err != nil {
+		logger.Error("Can't connect to audit log postgresql: %v", err)
+	}
+	_, err = pc.Query(`
+                CREATE TABLE IF NOT EXISTS audit (
+                        id BIGSERIAL NOT NULL,
+                        remoteaddr TEXT,
+                        domain TEXT,
+                        qtype TEXT,
+                        timestamp TIMESTAMP
+                )
+        `)
+	auditLogger := &PostgresqlAuditLogger{
+		backend: pc,
+		mesgs:   make(chan *AuditMesg, AUDIT_LOG_OUTPUT_BUFFER),
+		expire:  expire,
+	}
+	go auditLogger.Run()
+	go auditLogger.Expire()
+	return auditLogger
+}
+
+func (pl *PostgresqlAuditLogger) Run() {
+	for {
+		select {
+		case mesg := <-pl.mesgs:
+			_, err := pl.backend.Query(`INSERT INTO audit (remoteaddr, domain, qtype, timestamp) VALUES ($1, $2, $3, $4)`,
+				mesg.RemoteAddr, mesg.Domain, mesg.QType, mesg.Timestamp,
+			)
+			if err != nil {
+				logger.Error("Can't write to postgresql audit log: %v", err)
+				continue
+			}
+		}
+	}
+}
+
+func (pl *PostgresqlAuditLogger) Write(mesg *AuditMesg) {
+	pl.mesgs <- mesg
+}
+
+func (pl *PostgresqlAuditLogger) Expire() {
+	for {
+		expireTime := time.Now().Add(time.Duration(-pl.expire) * time.Second)
+		_, err := pl.backend.Query(`DELETE FROM audit WHERE timestamp < $1`, expireTime)
+		if err != nil {
+			logger.Error("Can't expire postgresql audit log: %v", err)
+		}
+		time.Sleep(time.Duration(pl.expire) * time.Second / 2)
+	}
 }
