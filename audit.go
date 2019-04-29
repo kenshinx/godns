@@ -102,7 +102,7 @@ func NewPostgresqlAuditLogger(ps PostgresqlSettings, expire int64) AuditLogger {
 	if err != nil {
 		logger.Error("Can't connect to audit log postgresql: %v", err)
 	}
-	_, err = pc.Query(`
+	rows, err := pc.Query(`
                 CREATE TABLE IF NOT EXISTS audit (
                         id BIGSERIAL NOT NULL,
                         remoteaddr TEXT,
@@ -111,6 +111,7 @@ func NewPostgresqlAuditLogger(ps PostgresqlSettings, expire int64) AuditLogger {
                         timestamp TIMESTAMP
                 )
         `)
+	defer rows.Close()
 	auditLogger := &PostgresqlAuditLogger{
 		backend: pc,
 		mesgs:   make(chan *AuditMesg, AUDIT_LOG_OUTPUT_BUFFER),
@@ -125,9 +126,10 @@ func (pl *PostgresqlAuditLogger) Run() {
 	for {
 		select {
 		case mesg := <-pl.mesgs:
-			_, err := pl.backend.Query(`INSERT INTO audit (remoteaddr, domain, qtype, timestamp) VALUES ($1, $2, $3, $4)`,
+			rows, err := pl.backend.Query(`INSERT INTO audit (remoteaddr, domain, qtype, timestamp) VALUES ($1, $2, $3, $4)`,
 				mesg.RemoteAddr, mesg.Domain, mesg.QType, mesg.Timestamp,
 			)
+			rows.Close()
 			if err != nil {
 				logger.Error("Can't write to postgresql audit log: %v", err)
 				continue
@@ -143,7 +145,8 @@ func (pl *PostgresqlAuditLogger) Write(mesg *AuditMesg) {
 func (pl *PostgresqlAuditLogger) Expire() {
 	for {
 		expireTime := time.Now().Add(time.Duration(-pl.expire) * time.Second)
-		_, err := pl.backend.Query(`DELETE FROM audit WHERE timestamp < $1`, expireTime)
+		rows, err := pl.backend.Query(`DELETE FROM audit WHERE timestamp < $1`, expireTime)
+		rows.Close()
 		if err != nil {
 			logger.Error("Can't expire postgresql audit log: %v", err)
 		}
