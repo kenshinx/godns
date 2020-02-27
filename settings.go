@@ -93,14 +93,21 @@ type HostsSettings struct {
 func init() {
 
 	var configFile string
+	var verbose bool
 
 	flag.StringVar(&configFile, "c", "./etc/godns.conf", "Look for godns toml-formatting config file in this directory")
+	flag.BoolVar(&verbose, "v", false, "verbose output")
 	flag.Parse()
 
 	if _, err := toml.DecodeFile(configFile, &settings); err != nil {
 		fmt.Printf("%s is not a valid toml config file\n", configFile)
 		fmt.Println(err)
 		os.Exit(1)
+	}
+
+	if verbose {
+		settings.Log.Stdout = true
+		settings.Log.Level = "DEBUG"
 	}
 
 }
