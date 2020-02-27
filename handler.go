@@ -132,29 +132,26 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		}
 	}
 
-	// Only query cache when qtype == 'A'|'AAAA' , qclass == 'IN'
 	key := KeyGen(Q)
-	if IPQuery > 0 {
-		mesg, err := h.cache.Get(key)
-		if err != nil {
-			if mesg, err = h.negCache.Get(key); err != nil {
-				logger.Debug("%s didn't hit cache", Q.String())
-			} else {
-				logger.Debug("%s hit negative cache", Q.String())
-				dns.HandleFailed(w, req)
-				return
-			}
+	mesg, err := h.cache.Get(key)
+	if err != nil {
+		if mesg, err = h.negCache.Get(key); err != nil {
+			logger.Debug("%s didn't hit cache", Q.String())
 		} else {
-			logger.Debug("%s hit cache", Q.String())
-			// we need this copy against concurrent modification of Id
-			msg := *mesg
-			msg.Id = req.Id
-			w.WriteMsg(&msg)
+			logger.Debug("%s hit negative cache", Q.String())
+			dns.HandleFailed(w, req)
 			return
 		}
+	} else {
+		logger.Debug("%s hit cache", Q.String())
+		// we need this copy against concurrent modification of Id
+		msg := *mesg
+		msg.Id = req.Id
+		w.WriteMsg(&msg)
+		return
 	}
 
-	mesg, err := h.resolver.Lookup(Net, req)
+	mesg, err = h.resolver.Lookup(Net, req)
 
 	if err != nil {
 		logger.Warn("Resolve query error %s", err)
@@ -169,7 +166,7 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	w.WriteMsg(mesg)
 
-	if IPQuery > 0 && len(mesg.Answer) > 0 {
+	if len(mesg.Answer) > 0 {
 		err = h.cache.Set(key, mesg)
 		if err != nil {
 			logger.Warn("Set %s cache failed: %s", Q.String(), err.Error())
