@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/hoisie/redis"
-	"golang.org/x/net/publicsuffix"
 )
 
 type Hosts struct {
@@ -110,18 +109,9 @@ func (r *RedisHosts) Get(domain string) ([]string, bool) {
 		return strings.Split(ip, ","), true
 	}
 
-	sld, err := publicsuffix.EffectiveTLDPlusOne(domain)
-	if err != nil {
-		return nil, false
-	}
-
 	for host, ip := range r.hosts {
 		if strings.HasPrefix(host, "*.") {
-			old, err := publicsuffix.EffectiveTLDPlusOne(host)
-			if err != nil {
-				continue
-			}
-			if sld == old {
+			if strings.HasSuffix(domain, strings.TrimPrefix(host, "*")) {
 				return strings.Split(ip, ","), true
 			}
 		}
@@ -166,18 +156,9 @@ func (f *FileHosts) Get(domain string) ([]string, bool) {
 		return []string{ip}, true
 	}
 
-	sld, err := publicsuffix.EffectiveTLDPlusOne(domain)
-	if err != nil {
-		return nil, false
-	}
-
 	for host, ip := range f.hosts {
 		if strings.HasPrefix(host, "*.") {
-			old, err := publicsuffix.EffectiveTLDPlusOne(host)
-			if err != nil {
-				continue
-			}
-			if sld == old {
+			if strings.HasSuffix(domain, strings.TrimPrefix(host, "*")) {
 				return []string{ip}, true
 			}
 		}
