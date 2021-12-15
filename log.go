@@ -151,7 +151,7 @@ func (h *FileHandler) Setup(config map[string]interface{}) error {
 
 	if file, ok := config["file"]; ok {
 		h.file = file.(string)
-		output, err := os.Create(h.file)
+		output, err := os.OpenFile(h.file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
