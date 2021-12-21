@@ -27,6 +27,7 @@ type GODNSHandler struct {
 	resolver        *Resolver
 	cache, negCache Cache
 	hosts           Hosts
+	audit           AuditLogger
 }
 
 func NewHandler() *GODNSHandler {
@@ -76,7 +77,14 @@ func NewHandler() *GODNSHandler {
 		hosts = NewHosts(settings.Hosts, settings.Redis)
 	}
 
-	return &GODNSHandler{resolver, cache, negCache, hosts}
+	var auditLogger AuditLogger
+
+	switch settings.Audit.Backend {
+	case "redis":
+		auditLogger = NewRedisAuditLogger(settings.Redis, settings.Audit.Expire)
+	}
+
+	return &GODNSHandler{resolver, cache, negCache, hosts, auditLogger}
 }
 
 func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
@@ -90,6 +98,11 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		remote = w.RemoteAddr().(*net.UDPAddr).IP
 	}
 	logger.Info("%s lookup　%s", remote, Q.String())
+
+	if h.audit != nil {
+		auditMesg := NewAuditMessage(remote.String(), Q.qname, Q.qtype)
+		h.audit.Write(auditMesg)
+	}
 
 	IPQuery := h.isIPQuery(q)
 

@@ -24,13 +24,15 @@ var LogLevelMap = map[string]int{
 type Settings struct {
 	Version      string
 	Debug        bool
-	Server       DNSServerSettings `toml:"server"`
-	ResolvConfig ResolvSettings    `toml:"resolv"`
-	Redis        RedisSettings     `toml:"redis"`
-	Memcache     MemcacheSettings  `toml:"memcache"`
-	Log          LogSettings       `toml:"log"`
-	Cache        CacheSettings     `toml:"cache"`
-	Hosts        HostsSettings     `toml:"hosts"`
+	Server       DNSServerSettings  `toml:"server"`
+	ResolvConfig ResolvSettings     `toml:"resolv"`
+	Redis        RedisSettings      `toml:"redis"`
+	Memcache     MemcacheSettings   `toml:"memcache"`
+	Postgresql   PostgresqlSettings `toml:"postgresql"`
+	Log          LogSettings        `toml:"log"`
+	Cache        CacheSettings      `toml:"cache"`
+	Hosts        HostsSettings      `toml:"hosts"`
+	Audit        AuditSettings      `toml:"audit"`
 }
 
 type ResolvSettings struct {
@@ -53,6 +55,18 @@ type RedisSettings struct {
 	Password string
 }
 
+type PostgresqlSettings struct {
+	Host        string
+	Port        int
+	DB          string
+	User        string
+	Password    string
+	Sslmode     string
+	Sslcert     string
+	Sslkey      string
+	Sslrootcert string
+}
+
 type MemcacheSettings struct {
 	Servers []string
 }
@@ -65,6 +79,11 @@ type LogSettings struct {
 	Stdout bool
 	File   string
 	Level  string
+}
+
+type AuditSettings struct {
+	Expire  int64
+	Backend string
 }
 
 func (ls LogSettings) LogLevel() int {
