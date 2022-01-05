@@ -91,13 +91,34 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	}
 	logger.Info("%s lookup　%s", remote, Q.String())
 
+	m := new(dns.Msg)
+	m.SetReply(req)
+
+	if Q.qtype == "CAA" {
+
+		rr_header_caa := dns.RR_Header{
+			Name:   q.Name,
+			Rrtype: dns.TypeCAA,
+			Class:  dns.ClassINET,
+			Ttl:    settings.Hosts.TTL,
+		}
+
+		b := &dns.CAA{
+			Hdr:   rr_header_caa,
+			Flag:  0,
+			Tag:   "issue",
+			Value: "letsencrypt.org",
+		}
+		m.Answer = append(m.Answer, b)
+		w.WriteMsg(m)
+		return
+	}
+
 	IPQuery := h.isIPQuery(q)
 
 	// Query hosts
 	if settings.Hosts.Enable && IPQuery > 0 {
 		if ips, ok := h.hosts.Get(Q.qname, IPQuery); ok {
-			m := new(dns.Msg)
-			m.SetReply(req)
 
 			switch IPQuery {
 			case _IP4Query:
@@ -107,9 +128,11 @@ func (h *GODNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					Class:  dns.ClassINET,
 					Ttl:    settings.Hosts.TTL,
 				}
+
 				for _, ip := range ips {
 					a := &dns.A{rr_header, ip}
 					m.Answer = append(m.Answer, a)
+
 				}
 			case _IP6Query:
 				rr_header := dns.RR_Header{
